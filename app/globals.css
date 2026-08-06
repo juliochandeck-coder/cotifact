@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+  }
+  /* Foco visible y consistente en todo lo interactivo (accesibilidad) */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brass ring-offset-2 ring-offset-paper rounded-sm;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-paper hover:bg-ink/90;
+  }
+  .btn-secondary {
+    @apply btn border border-ink/20 text-ink hover:bg-ink/5;
+  }
+  .btn-ghost {
+    @apply btn text-slate hover:text-ink hover:bg-ink/5;
+  }
+  .btn-danger {
+    @apply btn border border-brick/30 text-brick hover:bg-brick/5;
+  }
+  .field-label {
+    @apply block text-xs font-medium uppercase tracking-wide text-slate mb-1;
+  }
+  .field-input {
+    @apply w-full rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink
+           placeholder:text-slate/50 transition-colors
+           focus:outline-none focus:ring-2 focus:ring-brass/40 focus:border-brass;
+  }
+  .card {
+    @apply bg-white border border-line rounded-sm;
+  }
+  /* Oculta las flechas de los inputs numericos: los importes se teclean, no se giran */
+  .field-input[type="number"]::-webkit-outer-spin-button,
+  .field-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .field-input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+/* Sello de estado */
+.stamp {
+  transform: rotate(-8deg);
+  border: 3px solid currentColor;
+  border-radius: 4px;
+  padding: 4px 14px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+    size: auto;
+  }
+
+  /* CRITICO: sin esto el navegador descarta fondos y degradados al imprimir,
+     y el PDF sale sin los colores de marca del cliente. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  /* En pantalla la tabla puede desplazarse; al imprimir nunca. */
+  .print-scroll {
+    overflow: visible !important;
+  }
+  .print-scroll > * {
+    min-width: 0 !important;
+  }
+
+  /* Evita que un concepto quede partido entre dos paginas */
+  tr,
+  img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  .print-keep {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -1,0 +1,456 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { LineItem, Quote, CompanySettings, Client, Service } from "@/types";
+import { computeTotals, formatMoney, num } from "@/lib/format";
+
+const blankItem: LineItem = { description: "", quantity: 1, unit_price: 0 };
+
+type Props = {
+  mode: "create" | "edit";
+  quote?: Quote;
+  settings: CompanySettings | null;
+  clients: Client[];
+  services: Service[];
+};
+
+export default function QuoteForm({ mode, quote, settings, clients, services }: Props) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const currency = settings?.currency ?? "MXN";
+  const locale = settings?.locale ?? "es-MX";
+  const money = (v: number) => formatMoney(v, currency, locale);
+
+  const [clientName, setClientName] = useState(quote?.client_name ?? "");
+  const [clientCompany, setClientCompany] = useState(quote?.client_company ?? "");
+  const [clientEmail, setClientEmail] = useState(quote?.client_email ?? "");
+  const [clientPhone, setClientPhone] = useState(quote?.client_phone ?? "");
+  const [validUntil, setValidUntil] = useState(quote?.valid_until?.slice(0, 10) ?? "");
+  const [taxRate, setTaxRate] = useState<number>(
+    quote ? num(quote.tax_rate) : num(settings?.default_tax_rate ?? 16)
+  );
+  const [notes, setNotes] = useState(quote?.notes ?? settings?.default_notes ?? "");
+  const [items, setItems] = useState<LineItem[]>(
+    quote?.items?.length ? quote.items : [{ ...blankItem }]
+  );
+
+  const [clientId, setClientId] = useState<string | null>(quote?.client_id ?? null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pickService, setPickService] = useState("");
+
+  const { subtotal, taxAmount, total } = useMemo(
+    () => computeTotals(items, taxRate),
+    [items, taxRate]
+  );
+
+  function updateItem(index: number, patch: Partial<LineItem>) {
+    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  }
+
+  /** Al elegir un cliente guardado se rellenan sus datos de contacto. */
+  function applyClient(name: string) {
+    setClientName(name);
+    const match = clients.find(
+      (c) => c.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    if (!match) {
+      setClientId(null);
+      return;
+    }
+    setClientId(match.id);
+    setClientCompany(match.company ?? "");
+    setClientEmail(match.email ?? "");
+    setClientPhone(match.phone ?? "");
+  }
+
+  /** Inserta un servicio del catálogo como concepto, con su precio guardado. */
+  function addFromCatalog(id: string) {
+    const svc = services.find((s) => s.id === id);
+    if (!svc) return;
+    setItems((prev) => {
+      const line = { description: svc.name, quantity: 1, unit_price: num(svc.unit_price) };
+      const onlyBlank =
+        prev.length === 1 && !prev[0].description.trim() && !num(prev[0].unit_price);
+      return onlyBlank ? [line] : [...prev, line];
+    });
+    setPickService("");
+  }
+
+  function addItem() {
+    setItems((prev) => [...prev, { ...blankItem }]);
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (saving) return;
+
+    const cleanItems = items
+      .map((it) => ({
+        description: it.description.trim(),
+        quantity: num(it.quantity),
+        unit_price: num(it.unit_price),
+      }))
+      .filter((it) => it.description !== "");
+
+    if (cleanItems.length === 0) {
+      setError("Agrega al menos un concepto con descripción.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    const payload = {
+      client_id: clientId,
+      client_name: clientName.trim(),
+      client_company: clientCompany.trim() || null,
+      client_email: clientEmail.trim() || null,
+      client_phone: clientPhone.trim() || null,
+      items: cleanItems,
+      subtotal,
+      tax_rate: taxRate,
+      tax_amount: taxAmount,
+      total,
+      notes: notes.trim() || null,
+      valid_until: validUntil || null,
+    };
+
+    if (mode === "edit" && quote) {
+      const { error: updateError } = await supabase
+        .from("quotes")
+        .update(payload)
+        .eq("id", quote.id);
+
+      if (updateError) {
+        setError("No se pudo guardar. " + updateError.message);
+        setSaving(false);
+        return;
+      }
+
+      router.push(`/quotes/${quote.id}`);
+      router.refresh();
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      setSaving(false);
+      return;
+    }
+
+    // El directorio se construye solo: si el cliente es nuevo, se guarda.
+    let resolvedClientId = clientId;
+    if (!resolvedClientId) {
+      const { data: newClient } = await supabase
+        .from("clients")
+        .insert({
+          user_id: user.id,
+          name: clientName.trim(),
+          company: clientCompany.trim() || null,
+          email: clientEmail.trim() || null,
+          phone: clientPhone.trim() || null,
+        })
+        .select("id")
+        .single();
+      if (newClient) resolvedClientId = newClient.id;
+    }
+
+    // Numero atomico desde la base de datos: no se repite aunque se generen
+    // dos cotizaciones al mismo tiempo o se hayan borrado documentos.
+    const { data: quoteNumber, error: numberError } = await supabase.rpc(
+      "next_document_number",
+      { p_prefix: "COT" }
+    );
+
+    if (numberError || !quoteNumber) {
+      setError("No se pudo asignar el número de cotización. " + (numberError?.message ?? ""));
+      setSaving(false);
+      return;
+    }
+
+    const { data, error: insertError } = await supabase
+      .from("quotes")
+      .insert({
+        ...payload,
+        client_id: resolvedClientId,
+        user_id: user.id,
+        quote_number: quoteNumber,
+        status: "pendiente",
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !data) {
+      setError("No se pudo guardar la cotización. " + (insertError?.message ?? ""));
+      setSaving(false);
+      return;
+    }
+
+    router.push(`/quotes/${data.id}`);
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <section className="card p-5 sm:p-6 space-y-4">
+        <h2 className="font-display font-semibold text-ink text-sm uppercase tracking-wide">
+          Cliente
+        </h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="field-label" htmlFor="clientName">
+              Nombre del cliente *
+            </label>
+            <input
+              id="clientName"
+              required
+              className="field-input"
+              list="client-list"
+              autoComplete="off"
+              value={clientName}
+              onChange={(e) => applyClient(e.target.value)}
+              placeholder={clients.length ? "Escribe o elige uno guardado" : ""}
+            />
+            <datalist id="client-list">
+              {clients.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.company ?? ""}
+                </option>
+              ))}
+            </datalist>
+            {clientId && (
+              <p className="text-xs text-forest mt-1">Datos cargados del directorio.</p>
+            )}
+          </div>
+          <div>
+            <label className="field-label" htmlFor="clientCompany">Empresa</label>
+            <input
+              id="clientCompany"
+              className="field-input"
+              value={clientCompany}
+              onChange={(e) => setClientCompany(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="clientEmail">Correo</label>
+            <input
+              id="clientEmail"
+              type="email"
+              inputMode="email"
+              className="field-input"
+              value={clientEmail}
+              onChange={(e) => setClientEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="clientPhone">Teléfono</label>
+            <input
+              id="clientPhone"
+              type="tel"
+              inputMode="tel"
+              className="field-input"
+              value={clientPhone}
+              onChange={(e) => setClientPhone(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="validUntil">Válida hasta</label>
+            <input
+              id="validUntil"
+              type="date"
+              className="field-input"
+              value={validUntil}
+              onChange={(e) => setValidUntil(e.target.value)}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="font-display font-semibold text-ink text-sm uppercase tracking-wide">
+            Conceptos
+          </h2>
+          <div className="flex items-center gap-2">
+            {services.length > 0 && (
+              <>
+                <label className="sr-only" htmlFor="catalog">
+                  Insertar del catálogo
+                </label>
+                <select
+                  id="catalog"
+                  className="field-input w-auto text-xs py-1.5 min-h-8 cursor-pointer"
+                  value={pickService}
+                  onChange={(e) => addFromCatalog(e.target.value)}
+                >
+                  <option value="">Del catálogo…</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — {money(num(s.unit_price))}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+            <button type="button" onClick={addItem} className="btn-secondary text-xs py-1.5">
+              + Agregar
+            </button>
+          </div>
+        </div>
+
+        <ul className="space-y-4 sm:space-y-3">
+          {items.map((item, i) => {
+            const lineTotal = num(item.quantity) * num(item.unit_price);
+            return (
+              <li
+                key={i}
+                className="rounded-sm border border-line p-3 sm:border-0 sm:p-0
+                           sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end"
+              >
+                <div className="sm:col-span-5 mb-3 sm:mb-0">
+                  {i === 0 && <span className="field-label hidden sm:block">Descripción</span>}
+                  <label className="field-label sm:hidden">Descripción</label>
+                  <input
+                    className="field-input"
+                    value={item.description}
+                    onChange={(e) => updateItem(i, { description: e.target.value })}
+                    placeholder="Servicio o producto"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:contents">
+                  <div className="sm:col-span-2">
+                    {i === 0 && <span className="field-label hidden sm:block">Cant.</span>}
+                    <label className="field-label sm:hidden">Cantidad</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      inputMode="decimal"
+                      className="field-input text-right tabular-nums"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(i, { quantity: num(e.target.value) })}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    {i === 0 && <span className="field-label hidden sm:block">Precio</span>}
+                    <label className="field-label sm:hidden">Precio unitario</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      inputMode="decimal"
+                      className="field-input text-right tabular-nums"
+                      value={item.unit_price}
+                      onChange={(e) => updateItem(i, { unit_price: num(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:col-span-3 sm:justify-end sm:gap-2 mt-3 sm:mt-0">
+                  <div className="sm:text-right sm:flex-1 sm:pb-2">
+                    {i === 0 && <span className="field-label hidden sm:block">Importe</span>}
+                    <span className="sm:hidden text-xs uppercase tracking-wide text-slate mr-2">
+                      Importe
+                    </span>
+                    <span className="font-mono text-sm text-ink tabular-nums">
+                      {money(lineTotal)}
+                    </span>
+                  </div>
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(i)}
+                      className="text-slate hover:text-brick text-sm px-2 sm:pb-2"
+                      aria-label={`Eliminar concepto ${i + 1}`}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-6 flex justify-end">
+          <dl className="w-full sm:w-64 space-y-2">
+            <div className="flex items-center justify-between text-sm text-slate">
+              <dt>Subtotal</dt>
+              <dd className="font-mono text-ink tabular-nums">{money(subtotal)}</dd>
+            </div>
+            <div className="flex items-center justify-between text-sm text-slate gap-3">
+              <dt>
+                <label htmlFor="taxRate">Impuesto %</label>
+              </dt>
+              <dd>
+                <input
+                  id="taxRate"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="any"
+                  inputMode="decimal"
+                  className="field-input w-24 text-right tabular-nums py-1.5"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(num(e.target.value))}
+                />
+              </dd>
+            </div>
+            <div className="flex items-center justify-between font-semibold text-ink border-t border-line pt-2">
+              <dt>Total</dt>
+              <dd className="font-mono tabular-nums">{money(total)}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="card p-5 sm:p-6">
+        <label className="field-label" htmlFor="notes">
+          Notas (condiciones, tiempos de entrega, forma de pago)
+        </label>
+        <textarea
+          id="notes"
+          className="field-input min-h-24"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </section>
+
+      {error && (
+        <p role="alert" className="text-sm text-brick">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+        <Link
+          href={mode === "edit" && quote ? `/quotes/${quote.id}` : "/dashboard"}
+          className="btn-secondary sm:w-auto"
+        >
+          Cancelar
+        </Link>
+        <button type="submit" disabled={saving} className="btn-primary">
+          {saving
+            ? "Guardando…"
+            : mode === "edit"
+              ? "Guardar cambios"
+              : "Generar cotización"}
+        </button>
+      </div>
+    </form>
+  );
+}
