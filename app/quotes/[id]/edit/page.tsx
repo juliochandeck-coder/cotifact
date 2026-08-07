@@ -24,7 +24,7 @@ export default async function EditQuotePage({ params }: { params: { id: string }
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl font-bold text-ink mb-1">
+        <h1 className="font-title text-2xl font-bold text-ink mb-1">
           Editar {quote.quote_number}
         </h1>
         <p className="text-sm text-slate mb-6">

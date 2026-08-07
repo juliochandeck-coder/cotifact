@@ -20,13 +20,6 @@ import {
   CompanySettings,
 } from "@/types";
 
-const STAMP_MAP: Record<QuoteStatus, { text: string; colorClass: string } | null> = {
-  pendiente: null,
-  aprobada: { text: "Aprobada", colorClass: "text-forest" },
-  rechazada: { text: "No aprobada", colorClass: "text-brick" },
-  recotizar: { text: "Re-cotizar", colorClass: "text-brass" },
-};
-
 export default function QuoteDetailClient({
   quote,
   existingInvoice,
@@ -179,7 +172,7 @@ export default function QuoteDetailClient({
           ← Cotizaciones
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
-          <h1 className="font-display text-2xl font-bold text-ink">{quote.quote_number}</h1>
+          <h1 className="font-title text-2xl font-bold text-ink">{quote.quote_number}</h1>
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/quotes/${quote.id}/edit`} className="btn-secondary">
               Editar
@@ -297,7 +290,7 @@ export default function QuoteDetailClient({
         taxAmount={num(quote.tax_amount)}
         total={num(quote.total)}
         notes={quote.notes}
-        stamp={STAMP_MAP[status]}
+        statusTag={status !== "pendiente" ? <QuoteStatusBadge status={status} /> : null}
         company={company}
       />
 

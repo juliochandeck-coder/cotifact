@@ -19,7 +19,7 @@ export default async function DirectoryPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl font-bold text-ink">Directorio</h1>
+        <h1 className="font-title text-2xl font-bold text-ink">Directorio</h1>
         <p className="text-sm text-slate mt-1 mb-6">
           Tus clientes y servicios guardados. Se autocompletan al cotizar.
         </p>

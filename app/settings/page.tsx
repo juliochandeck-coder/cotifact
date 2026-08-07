@@ -20,7 +20,7 @@ export default async function SettingsPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl font-bold text-ink mb-1">Marca y datos de la empresa</h1>
+        <h1 className="font-title text-2xl font-bold text-ink mb-1">Marca y datos de la empresa</h1>
         <p className="text-sm text-slate mb-6">
           Esto aparece en el encabezado de tus cotizaciones y facturas.
         </p>

@@ -16,7 +16,7 @@ export default function Error({
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="card p-8 max-w-md text-center">
-        <h1 className="font-display text-xl font-bold text-ink">Algo falló al cargar</h1>
+        <h1 className="font-title text-xl font-bold text-ink">Algo falló al cargar</h1>
         <p className="text-sm text-slate mt-2 mb-5">
           La conexión con el servidor se interrumpió. Vuelve a intentarlo; si continúa,
           revisa que las claves de Supabase estén configuradas.

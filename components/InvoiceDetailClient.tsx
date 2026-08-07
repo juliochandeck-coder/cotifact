@@ -16,12 +16,6 @@ import {
   CompanySettings,
 } from "@/types";
 
-const STAMP_MAP: Record<InvoiceStatus, { text: string; colorClass: string } | null> = {
-  pendiente: null,
-  enviada: { text: "Enviada", colorClass: "text-brass" },
-  pagada: { text: "Pagada", colorClass: "text-forest" },
-};
-
 export default function InvoiceDetailClient({
   invoice,
   company,
@@ -50,7 +44,7 @@ export default function InvoiceDetailClient({
           ← Facturas
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
-          <h1 className="font-display text-2xl font-bold text-ink">{invoice.invoice_number}</h1>
+          <h1 className="font-title text-2xl font-bold text-ink">{invoice.invoice_number}</h1>
           <div className="flex items-center gap-2">
             {invoice.quote_id && (
               <Link href={`/quotes/${invoice.quote_id}`} className="btn-secondary">
@@ -112,7 +106,7 @@ export default function InvoiceDetailClient({
         taxAmount={num(invoice.tax_amount)}
         total={num(invoice.total)}
         notes={invoice.notes}
-        stamp={STAMP_MAP[status]}
+        statusTag={status !== "pendiente" ? <InvoiceStatusBadge status={status} /> : null}
         company={company}
       />
     </div>

@@ -40,9 +40,9 @@ export default function Navbar() {
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <Link
           href="/dashboard"
-          className="font-display font-bold text-ink text-lg tracking-tight shrink-0"
+          className="font-title font-bold text-ink text-lg tracking-tight shrink-0"
         >
-          Cotizador
+          CotiFact
         </Link>
 
         <nav aria-label="Principal" className="flex items-center gap-1 sm:gap-4 min-w-0">

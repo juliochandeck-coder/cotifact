@@ -56,9 +56,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-block stamp text-ink text-sm mb-4">Cotizador</div>
-          <h1 className="font-display text-2xl font-bold text-ink">Inicia sesión</h1>
-          <p className="text-sm text-slate mt-1">Accede a tus cotizaciones y facturas.</p>
+          <div className="inline-block stamp text-ink text-sm mb-4">CotiFact</div>
+          <h1 className="font-title text-2xl font-bold text-ink">Inicia sesión</h1>
+          <p className="text-sm text-slate mt-1">Cotiza y factura en un mismo lugar.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 card p-6 shadow-sm">

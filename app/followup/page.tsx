@@ -59,7 +59,7 @@ export default async function FollowUpPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl font-bold text-ink">Seguimiento</h1>
+        <h1 className="font-title text-2xl font-bold text-ink">Seguimiento</h1>
         <p className="text-sm text-slate mt-1">
           Lo que necesita un recordatorio hoy. Copia el mensaje y pégalo en WhatsApp o correo.
         </p>

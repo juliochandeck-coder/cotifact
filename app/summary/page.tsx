@@ -79,7 +79,7 @@ export default async function SummaryPage({
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
           <div>
-            <h1 className="font-display text-2xl font-bold text-ink">Resumen</h1>
+            <h1 className="font-title text-2xl font-bold text-ink">Resumen</h1>
             <p className="text-sm text-slate mt-1">{current.label}</p>
           </div>
         </div>

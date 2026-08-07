@@ -22,7 +22,9 @@ type Props = {
   taxAmount: number;
   total: number;
   notes: string | null;
-  stamp?: { text: string; colorClass: string } | null;
+  /** El badge de estado ya renderizado (mismo componente que usan las listas),
+   *  para que el documento y la lista muestren siempre el mismo lenguaje visual. */
+  statusTag?: React.ReactNode;
   company?: CompanySettings | null;
 };
 
@@ -42,7 +44,7 @@ export default function DocumentTemplate({
   taxAmount,
   total,
   notes,
-  stamp,
+  statusTag,
   company,
 }: Props) {
   const rawPrimary = company?.brand_primary ?? DEFAULT_BRAND_PRIMARY;
@@ -50,8 +52,8 @@ export default function DocumentTemplate({
   const primary = isValidHex(rawPrimary) ? rawPrimary : DEFAULT_BRAND_PRIMARY;
   const secondary = isValidHex(rawSecondary) ? rawSecondary : DEFAULT_BRAND_SECONDARY;
 
-  const currency = company?.currency ?? "MXN";
-  const locale = company?.locale ?? "es-MX";
+  const currency = company?.currency ?? "USD";
+  const locale = company?.locale ?? "es-PA";
   const money = (v: unknown) => formatMoney(v, currency, locale);
 
   const hasCompanyInfo = !!(
@@ -67,19 +69,12 @@ export default function DocumentTemplate({
     <article
       className="print-sheet relative bg-white border border-line rounded-sm shadow-sm
                  p-5 sm:p-8 md:p-10 max-w-3xl mx-auto overflow-hidden"
+      style={{ borderLeft: `4px solid ${primary}` }}
       aria-label={`${docLabel} ${number}`}
     >
-      <div
-        className="-mt-5 sm:-mt-8 md:-mt-10 -mx-5 sm:-mx-8 md:-mx-10 mb-6 sm:mb-8 h-2"
-        style={{ background: `linear-gradient(to right, ${primary}, ${secondary})` }}
-      />
-
-      {stamp && (
-        <div
-          className={`stamp absolute top-9 sm:top-10 right-5 sm:right-8 md:right-10
-                      text-xs sm:text-sm ${stamp.colorClass}`}
-        >
-          {stamp.text}
+      {statusTag && (
+        <div className="absolute top-5 sm:top-8 md:top-10 right-5 sm:right-8 md:right-10">
+          {statusTag}
         </div>
       )}
 
@@ -99,7 +94,7 @@ export default function DocumentTemplate({
                 />
               )}
               {company?.company_name && (
-                <p className="font-display font-semibold text-ink leading-tight">
+                <p className="font-display font-medium text-ink leading-tight">
                   {company.company_name}
                 </p>
               )}
@@ -111,14 +106,12 @@ export default function DocumentTemplate({
               </div>
             </>
           ) : (
-            <p className="text-xs uppercase tracking-widest text-slate">{docLabel}</p>
+            <DocLabel text={docLabel} secondary={secondary} />
           )}
         </div>
 
         <div className="sm:text-right shrink-0">
-          {hasCompanyInfo && (
-            <p className="text-xs uppercase tracking-widest text-slate mb-1">{docLabel}</p>
-          )}
+          {hasCompanyInfo && <DocLabel text={docLabel} secondary={secondary} />}
           <p className="font-mono text-xl sm:text-2xl font-semibold" style={{ color: primary }}>
             {number}
           </p>
@@ -137,7 +130,7 @@ export default function DocumentTemplate({
 
       <section className="mb-8">
         <p className="field-label">Cliente</p>
-        <p className="font-display font-semibold text-ink">{clientName}</p>
+        <p className="font-display font-medium text-ink">{clientName}</p>
         {clientCompany && <p className="text-sm text-slate">{clientCompany}</p>}
         {clientEmail && <p className="text-sm text-slate break-words">{clientEmail}</p>}
         {clientPhone && <p className="text-sm text-slate">{clientPhone}</p>}
@@ -203,5 +196,20 @@ export default function DocumentTemplate({
         </section>
       )}
     </article>
+  );
+}
+
+/** Etiqueta "COTIZACIÓN"/"FACTURA" con un punto en el color secundario de
+ *  marca — el unico lugar donde aparece ese segundo color, a proposito. */
+function DocLabel({ text, secondary }: { text: string; secondary: string }) {
+  return (
+    <p className="text-xs uppercase tracking-widest text-slate mb-1 inline-flex items-center gap-1.5">
+      <span
+        className="inline-block w-1.5 h-1.5 rounded-[1px]"
+        style={{ backgroundColor: secondary }}
+        aria-hidden="true"
+      />
+      {text}
+    </p>
   );
 }

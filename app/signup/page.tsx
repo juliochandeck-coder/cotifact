@@ -58,8 +58,8 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-block stamp text-ink text-sm mb-4">Cotizador</div>
-          <h1 className="font-display text-2xl font-bold text-ink">Crea tu cuenta</h1>
+          <div className="inline-block stamp text-ink text-sm mb-4">CotiFact</div>
+          <h1 className="font-title text-2xl font-bold text-ink">Crea tu cuenta</h1>
           <p className="text-sm text-slate mt-1">Un acceso, todas tus cotizaciones.</p>
         </div>
 

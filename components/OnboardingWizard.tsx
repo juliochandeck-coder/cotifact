@@ -124,7 +124,7 @@ export default function OnboardingWizard() {
           ))}
         </div>
         <p className="text-xs uppercase tracking-wide text-slate">Paso {step} de 3</p>
-        <h1 className="font-display text-2xl font-bold text-ink mt-1">
+        <h1 className="font-title text-2xl font-bold text-ink mt-1">
           {step === 1 && "¿Cómo se llama tu negocio?"}
           {step === 2 && "Tu marca en los documentos"}
           {step === 3 && "Moneda e impuesto"}

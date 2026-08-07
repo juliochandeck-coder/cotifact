@@ -66,7 +66,7 @@ export default async function InvoicesPage({
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-          <h1 className="font-display text-2xl font-bold text-ink">Facturas</h1>
+          <h1 className="font-title text-2xl font-bold text-ink">Facturas</h1>
           <p className="text-sm text-slate mt-1">
             {total} {total === 1 ? "factura" : "facturas"}
             {isFiltered && " con estos filtros"}

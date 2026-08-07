@@ -8,7 +8,7 @@
   }
   /* Foco visible y consistente en todo lo interactivo (accesibilidad) */
   :focus-visible {
-    @apply outline-none ring-2 ring-brass ring-offset-2 ring-offset-paper rounded-sm;
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-paper rounded-sm;
   }
 }
 
@@ -18,16 +18,16 @@
            transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-ink text-paper hover:bg-ink/90;
+    @apply btn bg-primary text-white hover:bg-primaryHover;
   }
   .btn-secondary {
-    @apply btn border border-ink/20 text-ink hover:bg-ink/5;
+    @apply btn border border-borderStrong text-ink bg-white hover:bg-ink/5;
   }
   .btn-ghost {
     @apply btn text-slate hover:text-ink hover:bg-ink/5;
   }
   .btn-danger {
-    @apply btn border border-brick/30 text-brick hover:bg-brick/5;
+    @apply btn border border-danger text-danger hover:bg-dangerBg;
   }
   .field-label {
     @apply block text-xs font-medium uppercase tracking-wide text-slate mb-1;
@@ -35,7 +35,7 @@
   .field-input {
     @apply w-full rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink
            placeholder:text-slate/50 transition-colors
-           focus:outline-none focus:ring-2 focus:ring-brass/40 focus:border-brass;
+           focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary;
   }
   .card {
     @apply bg-white border border-line rounded-sm;
@@ -51,9 +51,10 @@
   }
 }
 
-/* Sello de estado */
+/* Marca de CotiFact en login/registro: se queda con su look de sello,
+   distinto del indicador de estado de los documentos (ver DocumentTag). */
 .stamp {
-  transform: rotate(-8deg);
+  transform: rotate(-4deg);
   border: 3px solid currentColor;
   border-radius: 4px;
   padding: 4px 14px;
@@ -102,7 +103,9 @@
   .print-sheet {
     box-shadow: none !important;
     border: none !important;
-    padding: 0 !important;
+    border-left-width: 4px !important;
+    border-left-style: solid !important;
+    padding: 0 0 0 18px !important;
     max-width: none !important;
     margin: 0 !important;
   }

@@ -81,8 +81,8 @@ export type CompanySettings = {
   onboarded_at: string | null;
 };
 
-export const DEFAULT_BRAND_PRIMARY = "#14213D";
-export const DEFAULT_BRAND_SECONDARY = "#A87C3F";
+export const DEFAULT_BRAND_PRIMARY = "#000000";
+export const DEFAULT_BRAND_SECONDARY = "#666666";
 
 export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
   pendiente: "Pendiente",

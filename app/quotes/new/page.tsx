@@ -19,7 +19,7 @@ export default async function NewQuotePage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl font-bold text-ink mb-1">Nueva cotización</h1>
+        <h1 className="font-title text-2xl font-bold text-ink mb-1">Nueva cotización</h1>
         <p className="text-sm text-slate mb-6">Llena los campos y genera la cotización.</p>
         <QuoteForm
           mode="create"
