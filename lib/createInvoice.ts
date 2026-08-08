@@ -56,6 +56,8 @@ export async function createInvoiceFromQuote(
       tax_amount: quote.tax_amount,
       total: quote.total,
       notes: quote.notes,
+      project_name: quote.project_name,
+      project_description: quote.project_description,
       due_date: due.toISOString().slice(0, 10),
       status: "pendiente",
     })

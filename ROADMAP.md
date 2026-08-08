@@ -82,6 +82,39 @@ Cosas mencionadas en el camino que valen la pena pero no tienen fase asignada:
 
 ---
 
+
+## Fase 6 — Q&A de producto (agosto 2026)
+
+**Estado: mayoría construida, dos piezas quedaron fuera a propósito.**
+
+Se implementó: relabel de campos en login/registro, onboarding con usuario +
+empresa en el registro mismo, reordenar menú (Resumen primero) y logo→Resumen,
+número de cotización/factura editable, campos de proyecto (nombre + descripción)
+replicados de cotización a factura, botón "Agregar ítem" reposicionado, checkbox
+para guardar cliente en el directorio (antes era automático), selección de texto
+al enfocar campos numéricos, edición completa de facturas (antes solo cambiaba
+el estado), método de pago en facturas, estado editable directo desde las listas
+(cotizaciones y facturas), colores de marca opcionales con vista previa corregida
+(era degradado, ahora es sólida, igual al documento real), y 3 pares de
+tipografía preestablecidos.
+
+- [ ] **Subir fuente propia.** Los 3 pares preestablecidos ya funcionan; subir
+      un archivo de fuente real (WOFF/WOFF2) es una pieza aparte — requiere
+      guardar el archivo en Supabase Storage y servirlo vía `@font-face` en el
+      documento. Se dejó fuera a propósito para no mezclar una feature grande
+      con el resto del Q&A.
+- [ ] **Auditoría completa de tablet.** Se corrigieron puntos concretos (menú
+      con scroll horizontal, badges clicables en tarjetas móviles), pero no se
+      revisó pantalla por pantalla en un tablet real. Recomendado antes de
+      anunciar "funciona bien en tablet" como característica.
+- [ ] **Completar `schema.sql` con la capa de organizaciones.** Se descubrió
+      que la tabla `organizations` y sus políticas viven solo en
+      `migration_v5.sql`, nunca se plegaron al script de instalación nueva.
+      No afecta a este proyecto (ya migrado), pero un instalador nuevo desde
+      cero necesitaría correr `schema.sql` + `migration_v5.sql` en ese orden,
+      lo cual contradice el comentario de "instalacion nueva: schema.sql ya
+      lo incluye" que tienen las demás migraciones.
+
 ## Ya resuelto (para no reabrir la discusión)
 
 - ~~Multi-usuario / organizaciones~~ → esquema listo en `migration_v5.sql`,

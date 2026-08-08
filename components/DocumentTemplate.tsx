@@ -22,6 +22,9 @@ type Props = {
   taxAmount: number;
   total: number;
   notes: string | null;
+  projectName?: string | null;
+  projectDescription?: string | null;
+  paymentMethod?: string | null;
   /** El badge de estado ya renderizado (mismo componente que usan las listas),
    *  para que el documento y la lista muestren siempre el mismo lenguaje visual. */
   statusTag?: React.ReactNode;
@@ -44,6 +47,9 @@ export default function DocumentTemplate({
   taxAmount,
   total,
   notes,
+  projectName,
+  projectDescription,
+  paymentMethod,
   statusTag,
   company,
 }: Props) {
@@ -136,6 +142,16 @@ export default function DocumentTemplate({
         {clientPhone && <p className="text-sm text-slate">{clientPhone}</p>}
       </section>
 
+      {(projectName || projectDescription) && (
+        <section className="mb-8">
+          <p className="field-label">Proyecto</p>
+          {projectName && <p className="font-display font-medium text-ink">{projectName}</p>}
+          {projectDescription && (
+            <p className="text-sm text-slate whitespace-pre-wrap break-words">{projectDescription}</p>
+          )}
+        </section>
+      )}
+
       <div className="print-scroll -mx-5 sm:mx-0 px-5 sm:px-0 overflow-x-auto">
         <table className="w-full min-w-[420px] sm:min-w-0 text-sm mb-6">
           <caption className="sr-only">Conceptos de la {docLabel.toLowerCase()}</caption>
@@ -189,10 +205,20 @@ export default function DocumentTemplate({
         </dl>
       </div>
 
-      {notes && (
-        <section className="border-t border-line pt-4 print-keep">
-          <p className="field-label">Notas</p>
-          <p className="text-sm text-slate whitespace-pre-wrap break-words">{notes}</p>
+      {(notes || paymentMethod) && (
+        <section className="border-t border-line pt-4 print-keep space-y-3">
+          {paymentMethod && (
+            <div>
+              <p className="field-label">Método de pago</p>
+              <p className="text-sm text-ink">{paymentMethod}</p>
+            </div>
+          )}
+          {notes && (
+            <div>
+              <p className="field-label">Notas</p>
+              <p className="text-sm text-slate whitespace-pre-wrap break-words">{notes}</p>
+            </div>
+          )}
         </section>
       )}
     </article>

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingWizard from "@/components/OnboardingWizard";
+import { CompanySettings } from "@/types";
 
 export default async function WelcomePage() {
   const supabase = createClient();
@@ -10,7 +11,7 @@ export default async function WelcomePage() {
 
   const { data: settings } = await supabase
     .from("company_settings")
-    .select("onboarded_at")
+    .select("*")
     .eq("user_id", user!.id)
     .maybeSingle();
 
@@ -19,7 +20,7 @@ export default async function WelcomePage() {
 
   return (
     <div className="min-h-screen">
-      <OnboardingWizard />
+      <OnboardingWizard initialCompanyName={(settings as CompanySettings | null)?.company_name ?? ""} />
     </div>
   );
 }

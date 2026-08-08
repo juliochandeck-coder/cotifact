@@ -7,31 +7,55 @@ import { createClient } from "@/lib/supabase/client";
 export default function SignupPage() {
   const supabase = createClient();
 
+  const [username, setUsername] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const tooShort = password.length > 0 && password.length < 8;
+  const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
 
+    if (!username.trim()) {
+      setError("Elige un nombre de usuario.");
+      return;
+    }
+    if (!companyName.trim()) {
+      setError("Escribe el nombre de tu empresa.");
+      return;
+    }
     if (password.length < 8) {
       setError("Usa al menos 8 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Las dos contraseñas no coinciden.");
       return;
     }
 
     setLoading(true);
     setError(null);
 
+    // username y nombre de empresa viajan como metadatos del usuario: un
+    // trigger en la base de datos los usa para crear su organización y
+    // precargar Ajustes en cuanto la cuenta existe, sin esperar a que
+    // confirme el correo.
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
+        data: {
+          username: username.trim(),
+          company_name: companyName.trim(),
+        },
         emailRedirectTo:
           typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
       },
@@ -60,7 +84,7 @@ export default function SignupPage() {
         <div className="mb-8 text-center">
           <div className="inline-block stamp text-ink text-sm mb-4">CotiFact</div>
           <h1 className="font-title text-2xl font-bold text-ink">Crea tu cuenta</h1>
-          <p className="text-sm text-slate mt-1">Un acceso, todas tus cotizaciones.</p>
+          <p className="text-sm text-slate mt-1">Cotiza y factura en un mismo lugar.</p>
         </div>
 
         {done ? (
@@ -76,6 +100,34 @@ export default function SignupPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 card p-6 shadow-sm">
             <div>
+              <label className="field-label" htmlFor="username">Nombre de usuario</label>
+              <input
+                id="username"
+                autoComplete="username"
+                required
+                autoFocus
+                className="field-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="field-label" htmlFor="companyName">Nombre de la empresa</label>
+              <input
+                id="companyName"
+                required
+                className="field-input"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Aparece en tus cotizaciones y facturas"
+              />
+              <p className="text-xs text-slate mt-1">
+                Lo puedes cambiar cuando quieras desde Ajustes.
+              </p>
+            </div>
+
+            <div>
               <label className="field-label" htmlFor="email">Correo</label>
               <input
                 id="email"
@@ -83,11 +135,10 @@ export default function SignupPage() {
                 inputMode="email"
                 autoComplete="email"
                 required
-                autoFocus
                 className="field-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@empresa.com"
+                placeholder="Email"
               />
             </div>
 
@@ -122,6 +173,21 @@ export default function SignupPage() {
                   ? `Faltan ${8 - password.length} caracteres.`
                   : "Mínimo 8 caracteres."}
               </p>
+            </div>
+
+            <div>
+              <label className="field-label" htmlFor="confirmPassword">Repite la contraseña</label>
+              <input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                required
+                className={`field-input ${mismatch ? "border-brick" : ""}`}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+              {mismatch && <p className="text-xs text-brick mt-1">No coinciden.</p>}
             </div>
 
             <div aria-live="polite">

@@ -5,6 +5,7 @@ import ListFilters from "@/components/ListFilters";
 import DocumentList from "@/components/DocumentList";
 import Pagination from "@/components/Pagination";
 import { InvoiceStatusBadge } from "@/components/StatusBadge";
+import InlineStatusSelect from "@/components/InlineStatusSelect";
 import { formatMoney, num, sanitizeSearch } from "@/lib/format";
 import {
   Invoice,
@@ -121,7 +122,16 @@ export default async function InvoicesPage({
                 clientCompany: invoice.client_company,
                 total: num(invoice.total),
                 createdAt: invoice.created_at,
-                badge: <InvoiceStatusBadge status={invoice.status} />,
+                badge: (
+                  <InlineStatusSelect
+                    table="invoices"
+                    id={invoice.id}
+                    value={invoice.status}
+                    options={INVOICE_STATUSES}
+                    labels={INVOICE_STATUS_LABEL}
+                    renderBadge={(s) => <InvoiceStatusBadge status={s} />}
+                  />
+                ),
               }))}
             />
             <Pagination

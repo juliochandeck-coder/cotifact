@@ -6,8 +6,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
-  { href: "/dashboard", label: "Cotizaciones", short: "Cotiz." },
   { href: "/summary", label: "Resumen", short: "Resum." },
+  { href: "/dashboard", label: "Cotizaciones", short: "Cotiz." },
   { href: "/invoices", label: "Facturas", short: "Fact." },
   { href: "/followup", label: "Seguimiento", short: "Segui." },
   { href: "/directory", label: "Directorio", short: "Dir." },
@@ -37,21 +37,24 @@ export default function Navbar() {
 
   return (
     <header className="no-print border-b border-line bg-paper sticky top-0 z-10">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <Link
-          href="/dashboard"
+          href="/summary"
           className="font-title font-bold text-ink text-lg tracking-tight shrink-0"
         >
           CotiFact
         </Link>
 
-        <nav aria-label="Principal" className="flex items-center gap-1 sm:gap-4 min-w-0">
+        <nav
+          aria-label="Principal"
+          className="flex items-center gap-1 sm:gap-3 min-w-0 overflow-x-auto"
+        >
           {LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               aria-current={isActive(link.href) ? "page" : undefined}
-              className={`text-sm font-medium px-2 py-1 rounded-sm transition-colors whitespace-nowrap ${
+              className={`text-sm font-medium px-2 py-1 rounded-sm transition-colors whitespace-nowrap shrink-0 ${
                 isActive(link.href) ? "text-ink bg-ink/5" : "text-slate hover:text-ink"
               }`}
             >
@@ -62,7 +65,7 @@ export default function Navbar() {
           <button
             onClick={handleSignOut}
             disabled={signingOut}
-            className="btn-ghost text-sm px-2 py-1"
+            className="btn-ghost text-sm px-2 py-1 shrink-0"
           >
             {signingOut ? "…" : "Salir"}
           </button>

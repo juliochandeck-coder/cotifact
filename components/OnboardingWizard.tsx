@@ -13,7 +13,7 @@ const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
  * Tres pasos, no mas. Un solopreneur no llena formularios largos antes de ver
  * valor: cada paso se puede saltar y todo se edita despues en Ajustes.
  */
-export default function OnboardingWizard() {
+export default function OnboardingWizard({ initialCompanyName = "" }: { initialCompanyName?: string }) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -21,7 +21,7 @@ export default function OnboardingWizard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialCompanyName);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [taxId, setTaxId] = useState("");

@@ -3,7 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CompanySettings, CURRENCIES, DEFAULT_SETTINGS } from "@/types";
+import {
+  CompanySettings,
+  CURRENCIES,
+  DEFAULT_SETTINGS,
+  DEFAULT_BRAND_PRIMARY,
+  DEFAULT_BRAND_SECONDARY,
+  FONT_PAIRS,
+  FontPairKey,
+} from "@/types";
 import { contrastOnWhite, isValidHex, num } from "@/lib/format";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
@@ -14,13 +22,16 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
   const supabase = createClient();
   const base = initial ?? { ...DEFAULT_SETTINGS, user_id: "" };
 
+  const [username, setUsername] = useState(base.username ?? "");
   const [companyName, setCompanyName] = useState(base.company_name ?? "");
   const [companyEmail, setCompanyEmail] = useState(base.company_email ?? "");
   const [companyPhone, setCompanyPhone] = useState(base.company_phone ?? "");
   const [companyAddress, setCompanyAddress] = useState(base.company_address ?? "");
   const [taxId, setTaxId] = useState(base.tax_id ?? "");
-  const [brandPrimary, setBrandPrimary] = useState(base.brand_primary);
-  const [brandSecondary, setBrandSecondary] = useState(base.brand_secondary);
+  // Los colores son opcionales: campo vacio significa "usa el neutro por defecto".
+  const [brandPrimary, setBrandPrimary] = useState(base.brand_primary ?? "");
+  const [brandSecondary, setBrandSecondary] = useState(base.brand_secondary ?? "");
+  const [fontPair, setFontPair] = useState<FontPairKey>((base.font_pair as FontPairKey) || "roboto");
   const [currency, setCurrency] = useState(base.currency);
   const [defaultTaxRate, setDefaultTaxRate] = useState<number>(num(base.default_tax_rate));
   const [paymentTermsDays, setPaymentTermsDays] = useState<number>(num(base.payment_terms_days));
@@ -38,16 +49,18 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Libera la URL temporal del preview para no filtrar memoria al cambiar de logo
   useEffect(() => {
     return () => {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     };
   }, []);
 
-  const primaryValid = isValidHex(brandPrimary);
-  const secondaryValid = isValidHex(brandSecondary);
-  const lowContrast = primaryValid && contrastOnWhite(brandPrimary) < 3;
+  // Vacio cuenta como valido: sencillamente no se ha elegido ese color.
+  const primaryValid = brandPrimary.trim() === "" || isValidHex(brandPrimary);
+  const secondaryValid = brandSecondary.trim() === "" || isValidHex(brandSecondary);
+  const previewPrimary = primaryValid && brandPrimary ? brandPrimary : DEFAULT_BRAND_PRIMARY;
+  const previewSecondary = secondaryValid && brandSecondary ? brandSecondary : DEFAULT_BRAND_SECONDARY;
+  const lowContrast = primaryValid && !!brandPrimary && contrastOnWhite(brandPrimary) < 3;
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -90,7 +103,7 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
     if (saving) return;
 
     if (!primaryValid || !secondaryValid) {
-      setError("Revisa los colores: deben ser un hex válido, por ejemplo #1A4D8F.");
+      setError("Revisa los colores: deben ser un hex válido, por ejemplo #1A4D8F, o déjalos vacíos.");
       return;
     }
 
@@ -137,16 +150,18 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
     const { error: upsertError } = await supabase.from("company_settings").upsert(
       {
         user_id: user.id,
+        username: username.trim() || null,
         company_name: companyName.trim() || null,
         company_email: companyEmail.trim() || null,
         company_phone: companyPhone.trim() || null,
         company_address: companyAddress.trim() || null,
         tax_id: taxId.trim() || null,
         logo_url: finalLogoUrl,
-        brand_primary: brandPrimary,
-        brand_secondary: brandSecondary,
+        brand_primary: brandPrimary.trim() || null,
+        brand_secondary: brandSecondary.trim() || null,
+        font_pair: fontPair,
         currency,
-        locale: selected?.locale ?? "es-MX",
+        locale: selected?.locale ?? "es-PA",
         default_tax_rate: defaultTaxRate,
         payment_terms_days: paymentTermsDays,
         followup_days: Math.min(180, Math.max(1, followupDays || 7)),
@@ -173,6 +188,17 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="card p-5 sm:p-6 space-y-4">
         <h2 className="font-display font-semibold text-ink text-sm uppercase tracking-wide">
+          Cuenta
+        </h2>
+        <div>
+          <label className="field-label" htmlFor="username">Nombre de usuario</label>
+          <input id="username" className="field-input" value={username}
+            onChange={(e) => setUsername(e.target.value)} />
+        </div>
+      </section>
+
+      <section className="card p-5 sm:p-6 space-y-4">
+        <h2 className="font-display font-semibold text-ink text-sm uppercase tracking-wide">
           Empresa
         </h2>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -180,6 +206,7 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
             <label className="field-label" htmlFor="companyName">Nombre de la empresa</label>
             <input id="companyName" className="field-input" value={companyName}
               onChange={(e) => setCompanyName(e.target.value)} />
+            <p className="text-xs text-slate mt-1">Aparece en el encabezado de tus documentos.</p>
           </div>
           <div>
             <label className="field-label" htmlFor="taxId">ID fiscal (RUC, NIT, RFC…)</label>
@@ -249,7 +276,8 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
             Colores de marca
           </h2>
           <p className="text-sm text-slate mt-1">
-            Se aplican a la barra superior, el número de documento y el total.
+            Opcionales — puedes dejarlos vacíos y usar los neutros por defecto. Se aplican al filo
+            lateral, el número de documento y el total.
           </p>
         </div>
 
@@ -257,23 +285,31 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
           <div>
             <label className="field-label" htmlFor="primary">Color primario</label>
             <div className="flex items-center gap-2">
-              <input id="primary" type="color" value={primaryValid ? brandPrimary : "#14213D"}
+              <input id="primary" type="color" value={previewPrimary}
                 onChange={(e) => setBrandPrimary(e.target.value)}
                 className="h-10 w-14 rounded-sm border border-line cursor-pointer shrink-0" />
-              <input aria-label="Código hex del color primario"
+              <input aria-label="Código hex del color primario" placeholder="Sin elegir"
                 className={`field-input font-mono uppercase ${!primaryValid ? "border-brick" : ""}`}
                 value={brandPrimary} onChange={(e) => setBrandPrimary(e.target.value)} />
+              {brandPrimary && (
+                <button type="button" onClick={() => setBrandPrimary("")}
+                  className="text-xs text-slate hover:text-brick shrink-0">Quitar</button>
+              )}
             </div>
           </div>
           <div>
             <label className="field-label" htmlFor="secondary">Color secundario</label>
             <div className="flex items-center gap-2">
-              <input id="secondary" type="color" value={secondaryValid ? brandSecondary : "#A87C3F"}
+              <input id="secondary" type="color" value={previewSecondary}
                 onChange={(e) => setBrandSecondary(e.target.value)}
                 className="h-10 w-14 rounded-sm border border-line cursor-pointer shrink-0" />
-              <input aria-label="Código hex del color secundario"
+              <input aria-label="Código hex del color secundario" placeholder="Sin elegir"
                 className={`field-input font-mono uppercase ${!secondaryValid ? "border-brick" : ""}`}
                 value={brandSecondary} onChange={(e) => setBrandSecondary(e.target.value)} />
+              {brandSecondary && (
+                <button type="button" onClick={() => setBrandSecondary("")}
+                  className="text-xs text-slate hover:text-brick shrink-0">Quitar</button>
+              )}
             </div>
           </div>
         </div>
@@ -285,27 +321,72 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
           </p>
         )}
 
-        {/* Vista previa: reproduce el encabezado real del documento */}
-        <div className="border border-line rounded-sm overflow-hidden bg-white">
-          <div className="h-2" style={{
-            background: `linear-gradient(to right, ${primaryValid ? brandPrimary : "#14213D"}, ${secondaryValid ? brandSecondary : "#A87C3F"})`,
-          }} />
+        {/* Vista previa: mismo diseño del documento real — filo solido, no degradado */}
+        <div
+          className="border border-line rounded-sm overflow-hidden bg-white"
+          style={{ borderLeft: `4px solid ${previewPrimary}` }}
+        >
           <div className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               {logoPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoPreview} alt="" className="max-h-8 max-w-[96px] object-contain" />
               ) : null}
-              <span className="font-display font-semibold text-ink text-sm truncate">
+              <span className="font-display font-medium text-ink text-sm truncate">
                 {companyName || "Tu empresa"}
               </span>
             </div>
-            <span className="font-mono text-lg font-semibold shrink-0"
-              style={{ color: primaryValid ? brandPrimary : "#14213D" }}>
-              COT-2026-0001
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-[1px]"
+                style={{ backgroundColor: previewSecondary }}
+                aria-hidden="true"
+              />
+              <span className="font-mono text-lg font-semibold" style={{ color: previewPrimary }}>
+                COT-2026-0001
+              </span>
+            </div>
           </div>
         </div>
+      </section>
+
+      <section className="card p-5 sm:p-6 space-y-4">
+        <div>
+          <h2 className="font-display font-semibold text-ink text-sm uppercase tracking-wide">
+            Tipografía
+          </h2>
+          <p className="text-sm text-slate mt-1">
+            Elige el par de fuentes que se usa en tus cotizaciones y facturas.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {(Object.keys(FONT_PAIRS) as FontPairKey[]).map((key) => {
+            const pair = FONT_PAIRS[key];
+            const active = fontPair === key;
+            return (
+              <button
+                type="button"
+                key={key}
+                onClick={() => setFontPair(key)}
+                className={`text-left rounded-sm border p-3 transition-colors ${
+                  active ? "border-primary ring-1 ring-primary" : "border-line hover:border-ink/30"
+                }`}
+              >
+                <p style={{ fontFamily: pair.title }} className="text-lg font-bold text-ink leading-tight">
+                  Título
+                </p>
+                <p style={{ fontFamily: pair.body }} className="text-sm text-slate mt-0.5">
+                  Texto de cuerpo
+                </p>
+                <p className="text-xs text-slate mt-2">{pair.label}</p>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-slate">
+          ¿Necesitas subir la fuente exacta de tu marca? Está en camino — por ahora, elige el par
+          que más se le parezca.
+        </p>
       </section>
 
       <section className="card p-5 sm:p-6 space-y-4">
@@ -371,25 +452,8 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
         </div>
         <p className="text-sm text-slate">
           Aparecerá en la pestaña <span className="font-medium text-ink">Seguimiento</span> con un
-          mensaje de recordatorio listo para copiar. Si vendes servicios que se deciden rápido,
-          bájalo a 3 o 4 días; si tus clientes tardan en aprobar presupuestos grandes, súbelo a 15
-          o más. Por defecto son 7.
+          mensaje de recordatorio listo para copiar. Por defecto son 7.
         </p>
-        {followupDays >= 1 && followupDays <= 180 && (
-          <p className="text-xs text-slate">
-            Con este ajuste, una cotización enviada hoy te aparecería el{" "}
-            <span className="font-mono text-ink">
-              {new Date(Date.now() + followupDays * 86400000).toLocaleDateString(
-                CURRENCIES.find((c) => c.code === currency)?.locale ?? "es-MX",
-                { day: "2-digit", month: "long" }
-              )}
-            </span>
-            .
-          </p>
-        )}
-        {(followupDays < 1 || followupDays > 180) && (
-          <p className="text-sm text-brass">Elige un número entre 1 y 180 días.</p>
-        )}
       </section>
 
       <div aria-live="polite" className="min-h-5">

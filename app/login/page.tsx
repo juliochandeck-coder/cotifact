@@ -74,25 +74,20 @@ export default function LoginPage() {
               className="field-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@empresa.com"
+              placeholder="Email"
             />
           </div>
 
           <div>
             <div className="flex items-baseline justify-between">
               <label className="field-label" htmlFor="password">Contraseña</label>
-              <div className="flex items-center gap-3 mb-1">
-                <Link href="/forgot-password" className="text-xs text-brass hover:underline">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="text-xs text-slate hover:text-ink"
-                >
-                  {showPassword ? "Ocultar" : "Mostrar"}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="text-xs text-slate hover:text-ink mb-1"
+              >
+                {showPassword ? "Ocultar" : "Mostrar"}
+              </button>
             </div>
             <input
               id="password"
@@ -104,6 +99,9 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+            <Link href="/forgot-password" className="text-xs text-brass hover:underline mt-1.5 inline-block">
+              ¿Olvidaste tu contraseña?
+            </Link>
           </div>
 
           <div aria-live="polite">

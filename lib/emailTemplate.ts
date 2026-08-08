@@ -29,10 +29,10 @@ function esc(s: unknown) {
  */
 export function buildEmail(a: Args): { subject: string; html: string; text: string } {
   const c = a.company;
-  const primary = c && isValidHex(c.brand_primary) ? c.brand_primary : "#14213D";
-  const secondary = c && isValidHex(c.brand_secondary) ? c.brand_secondary : "#A87C3F";
-  const currency = c?.currency ?? "MXN";
-  const locale = c?.locale ?? "es-MX";
+  const primary = isValidHex(c?.brand_primary) ? c!.brand_primary : "#000000";
+  const secondary = isValidHex(c?.brand_secondary) ? c!.brand_secondary : "#666666";
+  const currency = c?.currency ?? "USD";
+  const locale = c?.locale ?? "es-PA";
   const money = (v: unknown) => formatMoney(v, currency, locale);
   const co = c?.company_name || "";
   const isQuote = a.kind === "quote";

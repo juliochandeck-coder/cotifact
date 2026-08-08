@@ -8,6 +8,7 @@ import Pagination from "@/components/Pagination";
 import UnbilledAlert from "@/components/UnbilledAlert";
 import QuickInvoiceButton from "@/components/QuickInvoiceButton";
 import { QuoteStatusBadge } from "@/components/StatusBadge";
+import InlineStatusSelect from "@/components/InlineStatusSelect";
 import { formatMoney, num, sanitizeSearch } from "@/lib/format";
 import {
   Quote,
@@ -153,7 +154,16 @@ export default async function DashboardPage({
                 clientCompany: quote.client_company,
                 total: num(quote.total),
                 createdAt: quote.created_at,
-                badge: <QuoteStatusBadge status={quote.status} />,
+                badge: (
+                  <InlineStatusSelect
+                    table="quotes"
+                    id={quote.id}
+                    value={quote.status}
+                    options={QUOTE_STATUSES}
+                    labels={QUOTE_STATUS_LABEL}
+                    renderBadge={(s) => <QuoteStatusBadge status={s} />}
+                  />
+                ),
                 action: unbilledIds.has(quote.id) ? (
                   <QuickInvoiceButton
                     quoteId={quote.id}

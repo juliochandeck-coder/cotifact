@@ -31,6 +31,8 @@ export type Quote = DocumentBase & {
   client_id: string | null;
   sent_at: string | null;
   approved_at: string | null;
+  project_name: string | null;
+  project_description: string | null;
 };
 
 export type Invoice = DocumentBase & {
@@ -40,6 +42,9 @@ export type Invoice = DocumentBase & {
   status: InvoiceStatus;
   sent_at: string | null;
   paid_at: string | null;
+  project_name: string | null;
+  project_description: string | null;
+  payment_method: string | null;
 };
 
 export type Client = {
@@ -70,8 +75,10 @@ export type CompanySettings = {
   company_address: string | null;
   tax_id: string | null;
   logo_url: string | null;
-  brand_primary: string;
-  brand_secondary: string;
+  brand_primary: string | null;
+  brand_secondary: string | null;
+  username: string | null;
+  font_pair: string;
   currency: string;
   locale: string;
   default_tax_rate: number;
@@ -120,8 +127,10 @@ export const DEFAULT_SETTINGS: Omit<CompanySettings, "user_id"> = {
   company_address: null,
   tax_id: null,
   logo_url: null,
-  brand_primary: DEFAULT_BRAND_PRIMARY,
-  brand_secondary: DEFAULT_BRAND_SECONDARY,
+  brand_primary: null,
+  brand_secondary: null,
+  username: null,
+  font_pair: "roboto",
   currency: "USD",
   locale: "es-PA",
   default_tax_rate: 7,
@@ -169,3 +178,19 @@ export type SummaryAverages = {
 };
 
 export type SummaryRangePreset = "month" | "quarter" | "year" | "custom";
+
+export type FontPairKey = "roboto" | "grotesk-serif" | "classic";
+
+export const FONT_PAIRS: Record<FontPairKey, { label: string; title: string; body: string }> = {
+  roboto: { label: "Roboto (moderno)", title: "'Roboto Slab', serif", body: "'Roboto', sans-serif" },
+  "grotesk-serif": {
+    label: "Grotesk + Serif (editorial)",
+    title: "'Playfair Display', serif",
+    body: "'Work Sans', sans-serif",
+  },
+  classic: {
+    label: "Clásico (documento formal)",
+    title: "'Merriweather', serif",
+    body: "'Source Sans 3', sans-serif",
+  },
+};

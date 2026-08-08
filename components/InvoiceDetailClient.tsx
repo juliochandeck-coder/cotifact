@@ -51,6 +51,9 @@ export default function InvoiceDetailClient({
                 Ver cotización
               </Link>
             )}
+            <Link href={`/invoices/${invoice.id}/edit`} className="btn-secondary">
+              Editar
+            </Link>
             <SendButton
               kind="invoice"
               id={invoice.id}
@@ -106,6 +109,9 @@ export default function InvoiceDetailClient({
         taxAmount={num(invoice.tax_amount)}
         total={num(invoice.total)}
         notes={invoice.notes}
+        projectName={invoice.project_name}
+        projectDescription={invoice.project_description}
+        paymentMethod={invoice.payment_method}
         statusTag={status !== "pendiente" ? <InvoiceStatusBadge status={status} /> : null}
         company={company}
       />

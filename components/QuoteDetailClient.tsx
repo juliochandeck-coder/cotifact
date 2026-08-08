@@ -290,6 +290,8 @@ export default function QuoteDetailClient({
         taxAmount={num(quote.tax_amount)}
         total={num(quote.total)}
         notes={quote.notes}
+        projectName={quote.project_name}
+        projectDescription={quote.project_description}
         statusTag={status !== "pendiente" ? <QuoteStatusBadge status={status} /> : null}
         company={company}
       />

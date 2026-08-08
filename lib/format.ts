@@ -89,7 +89,8 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
-export function isValidHex(hex: string): boolean {
+export function isValidHex(hex: string | null | undefined): hex is string {
+  if (!hex) return false;
   return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex);
 }
 

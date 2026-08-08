@@ -97,8 +97,9 @@ export default function DocumentList({ rows, basePath, currency, locale }: Props
                   </p>
                 </div>
               </div>
-              <div className="mt-3">{row.badge}</div>
             </div>
+            {/* Fuera del contenedor sin eventos: el badge si debe poder tocarse */}
+            <div className="mt-3 relative z-10 pointer-events-auto w-fit">{row.badge}</div>
             {row.action && (
               <div className="relative z-10 mt-3 pt-3 border-t border-line">{row.action}</div>
             )}
