@@ -3,39 +3,46 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { QuoteStatusBadge, InvoiceStatusBadge } from "@/components/StatusBadge";
+import { QuoteStatus, InvoiceStatus } from "@/types";
 
 /**
  * El badge de estado en una fila de lista, pero clicable: al tocarlo se
  * convierte en un selector para actualizar el estado sin abrir el detalle.
- * Misma logica optimista que StatusControl, en un formato compacto.
+ *
+ * "kind" en vez de recibir una funcion para dibujar el badge: esto se usa
+ * desde paginas que corren en el servidor (Server Components), y una
+ * funcion de React no se puede pasar como prop a traves de esa frontera
+ * hacia un componente de cliente — solo datos planos (texto, numeros,
+ * objetos serializables). Por eso el badge se resuelve aqui adentro.
  */
-export default function InlineStatusSelect<T extends string>({
+export default function InlineStatusSelect({
+  kind,
   table,
   id,
   value,
   options,
   labels,
-  renderBadge,
 }: {
+  kind: "quote" | "invoice";
   table: "quotes" | "invoices";
   id: string;
-  value: T;
-  options: readonly T[];
-  labels: Record<T, string>;
-  renderBadge: (status: T) => React.ReactNode;
+  value: QuoteStatus | InvoiceStatus;
+  options: readonly string[];
+  labels: Record<string, string>;
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const [status, setStatus] = useState<T>(value);
+  const [status, setStatus] = useState(value);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function handleChange(next: T) {
+  async function handleChange(next: string) {
     setOpen(false);
     if (next === status || busy) return;
 
     const previous = status;
-    setStatus(next);
+    setStatus(next as QuoteStatus | InvoiceStatus);
     setBusy(true);
 
     const { error } = await supabase.from(table).update({ status: next }).eq("id", id);
@@ -61,7 +68,11 @@ export default function InlineStatusSelect<T extends string>({
         aria-label="Cambiar estado"
         disabled={busy}
       >
-        {renderBadge(status)}
+        {kind === "quote" ? (
+          <QuoteStatusBadge status={status as QuoteStatus} />
+        ) : (
+          <InvoiceStatusBadge status={status as InvoiceStatus} />
+        )}
       </button>
     );
   }
@@ -72,7 +83,7 @@ export default function InlineStatusSelect<T extends string>({
       className="field-input w-auto py-1 pr-7 text-xs cursor-pointer"
       value={status}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => handleChange(e.target.value as T)}
+      onChange={(e) => handleChange(e.target.value)}
       onBlur={() => setOpen(false)}
     >
       {options.map((s) => (
