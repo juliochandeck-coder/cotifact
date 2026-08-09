@@ -18,6 +18,18 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
 
   if (!invoice) notFound();
 
+  // Se trae el numero de la cotizacion asociada (si existe) para poder
+  // avisarle al usuario exactamente cual queda libre si borra esta factura.
+  let linkedQuoteNumber: string | null = null;
+  if (invoice.quote_id) {
+    const { data: quote } = await supabase
+      .from("quotes")
+      .select("quote_number")
+      .eq("id", invoice.quote_id)
+      .maybeSingle();
+    linkedQuoteNumber = quote?.quote_number ?? null;
+  }
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -25,6 +37,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
         <InvoiceDetailClient
           invoice={invoice as Invoice}
           company={company as CompanySettings | null}
+          linkedQuoteNumber={linkedQuoteNumber}
         />
       </main>
     </div>

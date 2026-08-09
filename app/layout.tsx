@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Roboto, Roboto_Slab, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,6 +24,12 @@ const mono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "CotiFact",
   description: "Cotiza y factura en un mismo lugar.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
