@@ -9,7 +9,7 @@ export default function SendButton({
   id,
   clientEmail,
   sentAt,
-  locale = "es-MX",
+  locale = "es-PA",
 }: {
   kind: "quote" | "invoice";
   id: string;

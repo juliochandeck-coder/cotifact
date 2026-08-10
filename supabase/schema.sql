@@ -25,6 +25,8 @@ create table if not exists quotes (
   approved_at timestamptz,
   project_name text,
   project_description text,
+  is_retainer boolean not null default false,
+  retainer_group_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, quote_number)
@@ -34,6 +36,7 @@ create table if not exists quotes (
 create table if not exists invoices (
   id uuid primary key default uuid_generate_v4(),
   quote_id uuid references quotes(id) on delete set null,
+  client_id uuid references clients(id) on delete set null,
   user_id uuid references auth.users(id) on delete cascade not null,
   invoice_number text not null,
   client_name text not null,
@@ -53,14 +56,20 @@ create table if not exists invoices (
   project_name text,
   project_description text,
   payment_method text,
+  requires_dgi boolean not null default false,
+  dgi_invoice_number text,
+  dgi_issued_at date,
+  is_retainer_invoice boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, invoice_number)
 );
 
--- Una sola factura por cotizacion (evita duplicados por doble clic)
+-- Una sola factura por cotizacion normal (evita duplicados por doble
+-- clic). Los retainers quedan afuera de esta regla: se facturan cada
+-- mes desde la misma cotizacion, a proposito.
 create unique index if not exists invoices_one_per_quote_idx
-  on invoices(quote_id) where quote_id is not null;
+  on invoices(quote_id) where quote_id is not null and is_retainer_invoice = false;
 
 -- Datos de empresa y marca blanca
 create table if not exists company_settings (
@@ -180,6 +189,7 @@ create table if not exists clients (
   phone text,
   tax_id text,
   address text,
+  requires_dgi_default boolean not null default false,
   created_at timestamptz not null default now()
 );
 create unique index if not exists clients_user_name_idx on clients(user_id, lower(btrim(name)));
@@ -312,6 +322,9 @@ grant execute on function summary_averages(date,date) to authenticated;
 
 create index if not exists quotes_user_approved_idx on quotes(user_id, approved_at) where approved_at is not null;
 create index if not exists invoices_user_paid_idx on invoices(user_id, paid_at) where paid_at is not null;
+create index if not exists invoices_requires_dgi_idx on invoices(user_id, requires_dgi);
+create index if not exists quotes_is_retainer_idx on quotes(user_id, is_retainer);
+create index if not exists quotes_retainer_group_idx on quotes(retainer_group_id) where retainer_group_id is not null;
 
 -- Almacenamiento de logos
 insert into storage.buckets (id, name, public)

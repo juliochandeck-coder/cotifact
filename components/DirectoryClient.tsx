@@ -8,7 +8,7 @@ import { Client, Service, CompanySettings } from "@/types";
 
 type Tab = "clients" | "services";
 
-const emptyClient = { name: "", company: "", email: "", phone: "", tax_id: "", address: "" };
+const emptyClient = { name: "", company: "", email: "", phone: "", tax_id: "", address: "", requires_dgi_default: false };
 
 export default function DirectoryClient({
   initialClients,
@@ -28,8 +28,8 @@ export default function DirectoryClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const currency = company?.currency ?? "MXN";
-  const locale = company?.locale ?? "es-MX";
+  const currency = company?.currency ?? "USD";
+  const locale = company?.locale ?? "es-PA";
 
   const [cForm, setCForm] = useState({ ...emptyClient });
   const [cEditing, setCEditing] = useState<string | null>(null);
@@ -62,6 +62,7 @@ export default function DirectoryClient({
       phone: cForm.phone.trim() || null,
       tax_id: cForm.tax_id.trim() || null,
       address: cForm.address.trim() || null,
+      requires_dgi_default: cForm.requires_dgi_default,
     };
 
     if (cEditing) {
@@ -215,6 +216,19 @@ export default function DirectoryClient({
                 <Field label="ID fiscal (RUC, NIT, RFC…)" value={cForm.tax_id} onChange={(v) => setCForm({ ...cForm, tax_id: v })} />
                 <Field label="Dirección" value={cForm.address} onChange={(v) => setCForm({ ...cForm, address: v })} />
               </div>
+              <label className="flex items-center gap-2 text-sm text-ink cursor-pointer mt-3">
+                <input
+                  type="checkbox"
+                  checked={cForm.requires_dgi_default}
+                  onChange={(e) => setCForm({ ...cForm, requires_dgi_default: e.target.checked })}
+                  className="rounded border-line"
+                />
+                Este cliente siempre pide factura fiscal (DGI)
+              </label>
+              <p className="text-xs text-slate mt-1">
+                Cada factura nueva para este cliente traerá esa casilla ya marcada — la puedes
+                cambiar en cada factura sin que afecte lo guardado aquí.
+              </p>
               <div className="flex justify-end gap-2 mt-4">
                 <button onClick={() => setCOpen(false)} className="btn-secondary text-xs py-1.5">
                   Cancelar
@@ -254,6 +268,7 @@ export default function DirectoryClient({
                           phone: c.phone ?? "",
                           tax_id: c.tax_id ?? "",
                           address: c.address ?? "",
+                          requires_dgi_default: c.requires_dgi_default,
                         });
                         setCEditing(c.id);
                         setCOpen(true);

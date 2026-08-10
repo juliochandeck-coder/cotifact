@@ -48,6 +48,7 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
 
   const [clientId, setClientId] = useState<string | null>(quote?.client_id ?? null);
   const [saveToDirectory, setSaveToDirectory] = useState(true);
+  const [isRetainer, setIsRetainer] = useState(quote?.is_retainer ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickService, setPickService] = useState("");
@@ -126,6 +127,7 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
       client_phone: clientPhone.trim() || null,
       project_name: projectName.trim() || null,
       project_description: projectDescription.trim() || null,
+      is_retainer: isRetainer,
       items: cleanItems,
       subtotal,
       tax_rate: taxRate,
@@ -231,6 +233,12 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
       return;
     }
 
+    // Retainer nuevo (no una actualizacion de fee, esas ya traen su grupo):
+    // se apunta a si misma, asi queda como el origen de su propia cadena.
+    if (isRetainer) {
+      await supabase.from("quotes").update({ retainer_group_id: data.id }).eq("id", data.id);
+    }
+
     router.push(`/quotes/${data.id}`);
     router.refresh();
   }
@@ -263,6 +271,26 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
             />
           </div>
         </div>
+
+        {mode === "create" && (
+          <>
+            <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRetainer}
+                onChange={(e) => setIsRetainer(e.target.checked)}
+                className="rounded border-line"
+              />
+              Es un retainer (se factura varias veces desde esta misma cotización)
+            </label>
+            <p className="text-xs text-slate -mt-2">
+              Actívalo para clientes con fee mensual fijo. Vas a poder generar una factura cada
+              mes desde esta cotización sin que te bloquee la regla de "una factura por
+              cotización". Si el fee sube, usa "Actualizar fee" desde el detalle para crear la
+              siguiente versión, enlazada a esta.
+            </p>
+          </>
+        )}
       </section>
 
       <section className="card p-5 sm:p-6 space-y-4">

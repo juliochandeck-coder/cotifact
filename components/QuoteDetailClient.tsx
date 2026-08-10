@@ -7,26 +7,37 @@ import { createClient } from "@/lib/supabase/client";
 import DocumentTemplate from "@/components/DocumentTemplate";
 import StatusControl from "@/components/StatusControl";
 import SendButton from "@/components/SendButton";
-import { QuoteStatusBadge } from "@/components/StatusBadge";
+import { QuoteStatusBadge, InvoiceStatusBadge } from "@/components/StatusBadge";
 import { usePrintDocument } from "@/lib/usePrintDocument";
 import { createInvoiceFromQuote } from "@/lib/createInvoice";
-import { formatDate, num } from "@/lib/format";
+import { formatDate, formatMoney, num } from "@/lib/format";
 import {
   Quote,
   Invoice,
   QuoteStatus,
+  InvoiceStatus,
   QUOTE_STATUS_LABEL,
   QUOTE_STATUSES,
   CompanySettings,
 } from "@/types";
 
+type RetainerSibling = {
+  id: string;
+  quote_number: string;
+  total: number;
+  status: string;
+  created_at: string;
+};
+
 export default function QuoteDetailClient({
   quote,
-  existingInvoice,
+  invoices,
+  retainerSiblings,
   company,
 }: {
   quote: Quote;
-  existingInvoice: Invoice | null;
+  invoices: Invoice[];
+  retainerSiblings: RetainerSibling[];
   company: CompanySettings | null;
 }) {
   const router = useRouter();
@@ -34,11 +45,16 @@ export default function QuoteDetailClient({
   const print = usePrintDocument(quote.quote_number);
 
   const [status, setStatus] = useState<QuoteStatus>(quote.status);
-  const [busy, setBusy] = useState<null | "invoice" | "approve" | "duplicate" | "delete">(null);
+  const [busy, setBusy] = useState<null | "invoice" | "approve" | "duplicate" | "delete" | "fee">(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const locale = company?.locale ?? "es-MX";
+  const locale = company?.locale ?? "es-PA";
+  const currency = company?.currency ?? "USD";
+
+  // Una cotizacion normal solo puede tener una factura (la base de datos lo
+  // impone); un retainer puede tener varias, una por mes.
+  const existingInvoice = !quote.is_retainer ? (invoices[0] ?? null) : null;
 
   async function handleGenerateInvoice() {
     if (busy) return;
@@ -80,7 +96,6 @@ export default function QuoteDetailClient({
     const result = await createInvoiceFromQuote(supabase, { ...quote, status: "aprobada" }, company);
 
     if (!result.ok) {
-      // La aprobacion si quedo guardada; solo fallo la factura.
       setError(result.message);
       setBusy(null);
       router.refresh();
@@ -122,10 +137,13 @@ export default function QuoteDetailClient({
       .insert({
         user_id: user.id,
         quote_number: quoteNumber,
+        client_id: quote.client_id,
         client_name: quote.client_name,
         client_company: quote.client_company,
         client_email: quote.client_email,
         client_phone: quote.client_phone,
+        project_name: quote.project_name,
+        project_description: quote.project_description,
         items: quote.items,
         subtotal: quote.subtotal,
         tax_rate: quote.tax_rate,
@@ -140,6 +158,73 @@ export default function QuoteDetailClient({
 
     if (insertError || !data) {
       setError("No se pudo duplicar. " + (insertError?.message ?? ""));
+      setBusy(null);
+      return;
+    }
+
+    router.push(`/quotes/${data.id}/edit`);
+    router.refresh();
+  }
+
+  /**
+   * Sube el fee de un retainer: crea una cotizacion nueva con los mismos
+   * datos, enlazada al mismo grupo (para que se pueda ver el historial
+   * completo de fees despues), y manda directo a editar el precio.
+   */
+  async function handleUpdateFee() {
+    if (busy) return;
+    setBusy("fee");
+    setError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Tu sesión expiró.");
+      setBusy(null);
+      return;
+    }
+
+    const { data: quoteNumber, error: numberError } = await supabase.rpc(
+      "next_document_number",
+      { p_prefix: "COT" }
+    );
+
+    if (numberError || !quoteNumber) {
+      setError("No se pudo asignar el número. " + (numberError?.message ?? ""));
+      setBusy(null);
+      return;
+    }
+
+    const { data, error: insertError } = await supabase
+      .from("quotes")
+      .insert({
+        user_id: user.id,
+        quote_number: quoteNumber,
+        client_id: quote.client_id,
+        client_name: quote.client_name,
+        client_company: quote.client_company,
+        client_email: quote.client_email,
+        client_phone: quote.client_phone,
+        project_name: quote.project_name,
+        project_description: quote.project_description,
+        items: quote.items,
+        subtotal: quote.subtotal,
+        tax_rate: quote.tax_rate,
+        tax_amount: quote.tax_amount,
+        total: quote.total,
+        notes: quote.notes,
+        valid_until: quote.valid_until,
+        status: "pendiente",
+        is_retainer: true,
+        retainer_group_id: quote.retainer_group_id ?? quote.id,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !data) {
+      setError("No se pudo crear la actualización de fee. " + (insertError?.message ?? ""));
       setBusy(null);
       return;
     }
@@ -172,7 +257,14 @@ export default function QuoteDetailClient({
           ← Cotizaciones
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
-          <h1 className="font-title text-2xl font-bold text-ink">{quote.quote_number}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-title text-2xl font-bold text-ink">{quote.quote_number}</h1>
+            {quote.is_retainer && (
+              <span className="text-xs font-medium bg-ink/5 text-ink rounded-full px-2.5 py-0.5">
+                Retainer
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/quotes/${quote.id}/edit`} className="btn-secondary">
               Editar
@@ -218,55 +310,125 @@ export default function QuoteDetailClient({
         </div>
       )}
 
-      {/* Siempre visible: si aún no se puede facturar, dice por qué. */}
-      <div className="no-print card p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-ink">
-            {existingInvoice
-              ? "Factura generada"
-              : status === "aprobada"
-                ? "Cotización aprobada"
-                : status === "rechazada"
-                  ? "Cotización no aprobada"
-                  : "Todavía no se puede facturar"}
-          </p>
-          <p className="text-xs text-slate">
-            {existingInvoice
-              ? `Esta cotización ya se facturó como ${existingInvoice.invoice_number}.`
-              : status === "aprobada"
-                ? "Genera la factura con estos mismos datos."
-                : status === "rechazada"
-                  ? "No se factura trabajo que el cliente rechazó."
-                  : "Aprueba la cotización para generar la factura."}
-          </p>
-        </div>
+      {quote.is_retainer ? (
+        <div className="no-print card p-4 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-ink">Retainer</p>
+              <p className="text-xs text-slate">
+                {status === "aprobada"
+                  ? "Genera una factura cada mes desde esta cotización."
+                  : "Apruébala para poder empezar a facturar este retainer."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleUpdateFee}
+                disabled={busy !== null}
+                className="btn-secondary text-xs py-1.5"
+              >
+                {busy === "fee" ? "Creando…" : "Actualizar fee"}
+              </button>
+              <button
+                onClick={handleGenerateInvoice}
+                disabled={busy !== null || status !== "aprobada"}
+                className="btn-primary text-xs py-1.5"
+              >
+                {busy === "invoice" ? "Generando…" : "Generar factura"}
+              </button>
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {!existingInvoice && status !== "aprobada" && status !== "rechazada" && (
-            <button
-              onClick={handleApproveAndInvoice}
-              disabled={busy !== null}
-              className="btn-secondary"
-            >
-              {busy === "approve" ? "Procesando…" : "Aprobar y facturar"}
-            </button>
+          {invoices.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-line">
+              <p className="field-label mb-2">Facturas de esta cotización</p>
+              <ul className="space-y-1.5">
+                {invoices.map((inv) => (
+                  <li key={inv.id} className="flex items-center justify-between text-sm gap-3">
+                    <Link href={`/invoices/${inv.id}`} className="font-mono text-ink hover:text-primary">
+                      {inv.invoice_number}
+                    </Link>
+                    <span className="text-slate text-xs">{formatDate(inv.created_at, locale)}</span>
+                    <span className="font-mono text-ink tabular-nums">
+                      {formatMoney(inv.total, currency, locale)}
+                    </span>
+                    <InvoiceStatusBadge status={inv.status as InvoiceStatus} />
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
-          {existingInvoice ? (
-            <Link href={`/invoices/${existingInvoice.id}`} className="btn-primary">
-              Ver {existingInvoice.invoice_number}
-            </Link>
-          ) : (
-            <button
-              onClick={handleGenerateInvoice}
-              disabled={busy !== null || status !== "aprobada"}
-              className="btn-primary"
-            >
-              {busy === "invoice" ? "Generando…" : "Generar factura"}
-            </button>
+          {retainerSiblings.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-line">
+              <p className="field-label mb-2">Historial de fee de este retainer</p>
+              <ul className="space-y-1.5">
+                {retainerSiblings.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between text-sm gap-3">
+                    <Link href={`/quotes/${s.id}`} className="font-mono text-ink hover:text-primary">
+                      {s.quote_number}
+                    </Link>
+                    <span className="text-slate text-xs">{formatDate(s.created_at, locale)}</span>
+                    <span className="font-mono text-ink tabular-nums">
+                      {formatMoney(s.total, currency, locale)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
-      </div>
+      ) : (
+        // Cotizacion normal: comportamiento de siempre, un solo botón segun el caso.
+        <div className="no-print card p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-ink">
+              {existingInvoice
+                ? "Factura generada"
+                : status === "aprobada"
+                  ? "Cotización aprobada"
+                  : status === "rechazada"
+                    ? "Cotización no aprobada"
+                    : "Todavía no se puede facturar"}
+            </p>
+            <p className="text-xs text-slate">
+              {existingInvoice
+                ? `Esta cotización ya se facturó como ${existingInvoice.invoice_number}.`
+                : status === "aprobada"
+                  ? "Genera la factura con estos mismos datos."
+                  : status === "rechazada"
+                    ? "No se factura trabajo que el cliente rechazó."
+                    : "Aprueba la cotización para generar la factura."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {!existingInvoice && status !== "aprobada" && status !== "rechazada" && (
+              <button
+                onClick={handleApproveAndInvoice}
+                disabled={busy !== null}
+                className="btn-secondary"
+              >
+                {busy === "approve" ? "Procesando…" : "Aprobar y facturar"}
+              </button>
+            )}
+
+            {existingInvoice ? (
+              <Link href={`/invoices/${existingInvoice.id}`} className="btn-primary">
+                Ver {existingInvoice.invoice_number}
+              </Link>
+            ) : (
+              <button
+                onClick={handleGenerateInvoice}
+                disabled={busy !== null || status !== "aprobada"}
+                className="btn-primary"
+              >
+                {busy === "invoice" ? "Generando…" : "Generar factura"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="no-print text-sm text-brick mb-4">

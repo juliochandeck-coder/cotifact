@@ -109,6 +109,26 @@ export default function InvoiceDetailClient({
         </div>
       )}
 
+      {invoice.requires_dgi && (
+        <div className="no-print card p-4 mb-6 border-warningBg bg-warningBg/40">
+          <p className="text-sm font-medium text-warningText">Requiere factura fiscal (DGI)</p>
+          {invoice.dgi_invoice_number ? (
+            <p className="text-xs text-slate mt-0.5">
+              Emitida como <span className="font-mono text-ink">{invoice.dgi_invoice_number}</span>
+              {invoice.dgi_issued_at && ` el ${formatDate(invoice.dgi_issued_at, locale)}`}.
+            </p>
+          ) : (
+            <p className="text-xs text-slate mt-0.5">
+              Aún no se ha emitido en el facturador de la DGI —{" "}
+              <Link href={`/invoices/${invoice.id}/edit`} className="underline hover:text-ink">
+                anota el número aquí
+              </Link>{" "}
+              cuando la generes.
+            </p>
+          )}
+        </div>
+      )}
+
       <StatusControl<InvoiceStatus>
         table="invoices"
         id={invoice.id}

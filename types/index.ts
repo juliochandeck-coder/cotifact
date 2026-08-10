@@ -33,10 +33,13 @@ export type Quote = DocumentBase & {
   approved_at: string | null;
   project_name: string | null;
   project_description: string | null;
+  is_retainer: boolean;
+  retainer_group_id: string | null;
 };
 
 export type Invoice = DocumentBase & {
   quote_id: string | null;
+  client_id: string | null;
   invoice_number: string;
   due_date: string | null;
   status: InvoiceStatus;
@@ -45,6 +48,10 @@ export type Invoice = DocumentBase & {
   project_name: string | null;
   project_description: string | null;
   payment_method: string | null;
+  requires_dgi: boolean;
+  dgi_invoice_number: string | null;
+  dgi_issued_at: string | null;
+  is_retainer_invoice: boolean;
 };
 
 export type Client = {
@@ -56,6 +63,7 @@ export type Client = {
   phone: string | null;
   tax_id: string | null;
   address: string | null;
+  requires_dgi_default: boolean;
   created_at: string;
 };
 

@@ -1,36 +1,30 @@
-import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
 import InvoiceForm from "@/components/InvoiceForm";
-import { Invoice, CompanySettings, Client } from "@/types";
+import { CompanySettings, Client } from "@/types";
 
-export default async function EditInvoicePage({ params }: { params: { id: string } }) {
+export default async function NewInvoicePage() {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: invoice }, { data: settings }, { data: clients }] = await Promise.all([
-    supabase.from("invoices").select("*").eq("id", params.id).maybeSingle(),
+  const [{ data: settings }, { data: clients }] = await Promise.all([
     supabase.from("company_settings").select("*").eq("user_id", user!.id).maybeSingle(),
     supabase.from("clients").select("*").order("name"),
   ]);
-
-  if (!invoice) notFound();
 
   return (
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="font-title text-2xl font-bold text-ink mb-1">
-          Editar {invoice.invoice_number}
-        </h1>
+        <h1 className="font-title text-2xl font-bold text-ink mb-1">Nueva factura</h1>
         <p className="text-sm text-slate mb-6">
-          Los cambios se reflejan en la factura existente.
+          Para clientes que facturas directo, sin pasar por una cotización — comisión
+          recurrente, por ejemplo.
         </p>
         <InvoiceForm
-          mode="edit"
-          invoice={invoice as Invoice}
+          mode="create"
           settings={settings as CompanySettings | null}
           clients={(clients ?? []) as Client[]}
         />

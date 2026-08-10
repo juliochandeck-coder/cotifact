@@ -40,6 +40,19 @@ export async function createInvoiceFromQuote(
   const due = new Date();
   due.setDate(due.getDate() + termDays);
 
+  // El check de "requiere DGI" se precarga desde lo guardado en el cliente
+  // del directorio, si existe uno enlazado — se puede cambiar despues sin
+  // que afecte lo que quedo guardado en el directorio.
+  let requiresDgi = false;
+  if (quote.client_id) {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("requires_dgi_default")
+      .eq("id", quote.client_id)
+      .maybeSingle();
+    requiresDgi = client?.requires_dgi_default ?? false;
+  }
+
   const { data, error: insertError } = await supabase
     .from("invoices")
     .insert({
@@ -60,6 +73,10 @@ export async function createInvoiceFromQuote(
       project_description: quote.project_description,
       due_date: due.toISOString().slice(0, 10),
       status: "pendiente",
+      requires_dgi: requiresDgi,
+      // Los retainers se facturan cada mes desde la misma cotizacion:
+      // esta marca los saca de la regla de "una sola factura por cotizacion".
+      is_retainer_invoice: quote.is_retainer,
     })
     .select("id, invoice_number")
     .single();

@@ -47,8 +47,8 @@ export default async function FollowUpPage() {
   const stale = (staleRaw ?? []) as Quote[];
   const overdue = (overdueRaw ?? []) as Invoice[];
   const company = settings as CompanySettings | null;
-  const currency = company?.currency ?? "MXN";
-  const locale = company?.locale ?? "es-MX";
+  const currency = company?.currency ?? "USD";
+  const locale = company?.locale ?? "es-PA";
   const ctx = { currency, locale, companyName: company?.company_name };
 
   const owed = overdue.reduce((s, i) => s + num(i.total), 0);

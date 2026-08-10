@@ -76,8 +76,8 @@ export default async function DashboardPage({
   const unbilledCount = num((summary as { total_count?: number } | null)?.total_count);
   const unbilledAmount = num((summary as { total_amount?: number } | null)?.total_amount);
   const company = settings as CompanySettings | null;
-  const currency = company?.currency ?? "MXN";
-  const locale = company?.locale ?? "es-MX";
+  const currency = company?.currency ?? "USD";
+  const locale = company?.locale ?? "es-PA";
   const total = count ?? 0;
   const isFiltered = !!q || !!status;
 
