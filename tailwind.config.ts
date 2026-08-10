@@ -38,7 +38,7 @@ const config: Config = {
       },
       fontFamily: {
         display: ["var(--font-body)"],
-        title: ["var(--font-title)"],
+        title: ["var(--font-body)"],
         body: ["var(--font-body)"],
         mono: ["var(--font-mono)"],
       },

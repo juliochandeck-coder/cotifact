@@ -182,7 +182,7 @@ export type SummaryRangePreset = "month" | "quarter" | "year" | "custom";
 export type FontPairKey = "roboto" | "grotesk-serif" | "classic";
 
 export const FONT_PAIRS: Record<FontPairKey, { label: string; title: string; body: string }> = {
-  roboto: { label: "Roboto (moderno)", title: "'Roboto Slab', serif", body: "'Roboto', sans-serif" },
+  roboto: { label: "Arimo + Inter (por defecto)", title: "'Arimo', sans-serif", body: "'Arimo', sans-serif" },
   "grotesk-serif": {
     label: "Grotesk + Serif (editorial)",
     title: "'Playfair Display', serif",

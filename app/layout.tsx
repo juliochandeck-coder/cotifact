@@ -1,24 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto, Roboto_Slab, Roboto_Mono } from "next/font/google";
+import { Arimo, Inter } from "next/font/google";
 import "./globals.css";
 
-const body = Roboto({
+const body = Arimo({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["300", "400", "500", "700"],
-});
-// Fuente distinta y propia, solo para titulos reales — asi un titulo no solo
-// pesa mas, es literalmente otra familia tipografica frente al cuerpo.
-const title = Roboto_Slab({
-  subsets: ["latin"],
-  variable: "--font-title",
-  weight: ["700"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const mono = Roboto_Mono({
+// Los numeros (montos, cantidades, numeros de documento) usan Inter: sus
+// cifras tabulares alinean bien en columnas aunque no sea una fuente
+// monoespaciada de verdad.
+const mono = Inter({
   subsets: ["latin"],
   variable: "--font-mono",
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -38,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${body.variable} ${title.variable} ${mono.variable}`}>
+    <html lang="es" className={`${body.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );
