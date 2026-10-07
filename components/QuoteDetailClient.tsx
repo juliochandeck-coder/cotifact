@@ -10,7 +10,8 @@ import SendButton from "@/components/SendButton";
 import { QuoteStatusBadge, InvoiceStatusBadge } from "@/components/StatusBadge";
 import { usePrintDocument } from "@/lib/usePrintDocument";
 import { createInvoiceFromQuote } from "@/lib/createInvoice";
-import { formatDate, formatMoney, num } from "@/lib/format";
+import { askDocumentNumber } from "@/lib/documentNumber";
+import { formatDate, formatDateDMY, formatMoney, num, documentFilename } from "@/lib/format";
 import {
   Quote,
   Invoice,
@@ -42,7 +43,13 @@ export default function QuoteDetailClient({
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const print = usePrintDocument(quote.quote_number);
+  const print = usePrintDocument(
+    documentFilename("quote", {
+      issuer: company?.company_name,
+      client: quote.client_company || quote.client_name,
+      date: quote.created_at,
+    })
+  );
 
   const [status, setStatus] = useState<QuoteStatus>(quote.status);
   const [busy, setBusy] = useState<null | "invoice" | "approve" | "duplicate" | "delete" | "fee">(null);
@@ -58,10 +65,16 @@ export default function QuoteDetailClient({
 
   async function handleGenerateInvoice() {
     if (busy) return;
-    setBusy("invoice");
     setError(null);
+    const invoiceNumber = await askDocumentNumber(
+      supabase,
+      "invoice",
+      `Factura para la cotización ${quote.quote_number}`
+    );
+    if (!invoiceNumber) return;
+    setBusy("invoice");
 
-    const result = await createInvoiceFromQuote(supabase, quote, company);
+    const result = await createInvoiceFromQuote(supabase, quote, company, invoiceNumber);
 
     if (!result.ok) {
       setError(result.message);
@@ -77,8 +90,15 @@ export default function QuoteDetailClient({
   /** Aprobar y facturar de una vez: antes eran tres pasos separados. */
   async function handleApproveAndInvoice() {
     if (busy) return;
-    setBusy("approve");
     setError(null);
+    // Se pide el número antes de aprobar: si cancela, no cambia nada.
+    const invoiceNumber = await askDocumentNumber(
+      supabase,
+      "invoice",
+      `Factura para la cotización ${quote.quote_number}`
+    );
+    if (!invoiceNumber) return;
+    setBusy("approve");
 
     const { error: statusError } = await supabase
       .from("quotes")
@@ -93,7 +113,12 @@ export default function QuoteDetailClient({
 
     setStatus("aprobada");
 
-    const result = await createInvoiceFromQuote(supabase, { ...quote, status: "aprobada" }, company);
+    const result = await createInvoiceFromQuote(
+      supabase,
+      { ...quote, status: "aprobada" },
+      company,
+      invoiceNumber
+    );
 
     if (!result.ok) {
       setError(result.message);
@@ -121,13 +146,8 @@ export default function QuoteDetailClient({
       return;
     }
 
-    const { data: quoteNumber, error: numberError } = await supabase.rpc(
-      "next_document_number",
-      { p_prefix: "COT" }
-    );
-
-    if (numberError || !quoteNumber) {
-      setError("No se pudo asignar el número. " + (numberError?.message ?? ""));
+    const quoteNumber = await askDocumentNumber(supabase, "quote", `Duplicar la cotización ${quote.quote_number}`);
+    if (!quoteNumber) {
       setBusy(null);
       return;
     }
@@ -157,7 +177,11 @@ export default function QuoteDetailClient({
       .single();
 
     if (insertError || !data) {
-      setError("No se pudo duplicar. " + (insertError?.message ?? ""));
+      setError(
+        insertError?.code === "23505"
+          ? `Ya tienes otra cotización con el número ${quoteNumber}. Usa uno distinto.`
+          : "No se pudo duplicar. " + (insertError?.message ?? "")
+      );
       setBusy(null);
       return;
     }
@@ -186,13 +210,8 @@ export default function QuoteDetailClient({
       return;
     }
 
-    const { data: quoteNumber, error: numberError } = await supabase.rpc(
-      "next_document_number",
-      { p_prefix: "COT" }
-    );
-
-    if (numberError || !quoteNumber) {
-      setError("No se pudo asignar el número. " + (numberError?.message ?? ""));
+    const quoteNumber = await askDocumentNumber(supabase, "quote", `Nueva cotización con el fee actualizado (antes ${quote.quote_number})`);
+    if (!quoteNumber) {
       setBusy(null);
       return;
     }
@@ -224,7 +243,11 @@ export default function QuoteDetailClient({
       .single();
 
     if (insertError || !data) {
-      setError("No se pudo crear la actualización de fee. " + (insertError?.message ?? ""));
+      setError(
+        insertError?.code === "23505"
+          ? `Ya tienes otra cotización con el número ${quoteNumber}. Usa uno distinto.`
+          : "No se pudo crear la actualización de fee. " + (insertError?.message ?? "")
+      );
       setBusy(null);
       return;
     }
@@ -439,7 +462,7 @@ export default function QuoteDetailClient({
       <DocumentTemplate
         docLabel="COTIZACIÓN"
         number={quote.quote_number}
-        date={formatDate(quote.created_at, locale) ?? ""}
+        date={formatDateDMY(quote.created_at)}
         secondaryDateLabel="Válida hasta"
         secondaryDate={formatDate(quote.valid_until, locale)}
         clientName={quote.client_name}

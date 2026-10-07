@@ -41,7 +41,7 @@ export default async function QuoteDetailPage({ params }: { params: { id: string
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-[860px] mx-auto px-4 py-8">
         <QuoteDetailClient
           quote={q}
           invoices={(invoices ?? []) as Invoice[]}

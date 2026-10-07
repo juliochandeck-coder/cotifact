@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { LineItem, Quote, CompanySettings, Client, Service } from "@/types";
 import { computeTotals, formatMoney, num } from "@/lib/format";
+import { lastUsedNumber } from "@/lib/documentNumber";
 
 const blankItem: LineItem = { description: "", quantity: 1, unit_price: 0 };
 /** Selecciona todo el texto al enfocar: el "0" inicial no estorba, se
@@ -25,6 +26,13 @@ type Props = {
 export default function QuoteForm({ mode, quote, settings, clients, services }: Props) {
   const router = useRouter();
   const supabase = createClient();
+  // Numeración manual: solo se muestra cuál fue la última como referencia.
+  const [lastNumber, setLastNumber] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== "create") return;
+    lastUsedNumber(supabase, "quote").then(setLastNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const currency = settings?.currency ?? "USD";
   const locale = settings?.locale ?? "es-PA";
@@ -167,6 +175,12 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
       return;
     }
 
+    if (!quoteNumber.trim()) {
+      setError("Escribe el número de cotización.");
+      setSaving(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -194,21 +208,7 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
       if (newClient) resolvedClientId = newClient.id;
     }
 
-    // Si el usuario escribio su propio numero, se respeta tal cual.
-    // Si lo dejo vacio, se pide uno atomico a la base de datos.
-    let finalNumber = quoteNumber.trim();
-    if (!finalNumber) {
-      const { data: generated, error: numberError } = await supabase.rpc(
-        "next_document_number",
-        { p_prefix: "COT" }
-      );
-      if (numberError || !generated) {
-        setError("No se pudo asignar el número de cotización. " + (numberError?.message ?? ""));
-        setSaving(false);
-        return;
-      }
-      finalNumber = generated;
-    }
+    const finalNumber = quoteNumber.trim();
 
     const { data, error: insertError } = await supabase
       .from("quotes")
@@ -226,7 +226,7 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
       const duplicate = insertError?.code === "23505";
       setError(
         duplicate
-          ? "Ya tienes otra cotización con ese número. Usa uno distinto o déjalo vacío."
+          ? "Ya tienes otra cotización con ese número. Usa uno distinto."
           : "No se pudo guardar la cotización. " + (insertError?.message ?? "")
       );
       setSaving(false);
@@ -257,7 +257,8 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
               className="field-input font-mono"
               value={quoteNumber}
               onChange={(e) => setQuoteNumber(e.target.value)}
-              placeholder="Se genera automático si lo dejas vacío"
+              required
+              placeholder={lastNumber ? `La última fue ${lastNumber}` : "Ej. 264"}
             />
           </div>
           <div>

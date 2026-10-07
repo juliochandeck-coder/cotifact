@@ -1,21 +1,28 @@
-import {
-  LineItem,
-  CompanySettings,
-  DEFAULT_BRAND_PRIMARY,
-  DEFAULT_BRAND_SECONDARY,
-} from "@/types";
-import { formatMoney, formatDate, hexToRgba, num, isValidHex } from "@/lib/format";
+import { Fragment } from "react";
+import { LineItem, CompanySettings } from "@/types";
+import { formatMoney, num } from "@/lib/format";
 
+/**
+ * Plantilla de impresion de cotizaciones y facturas.
+ *
+ * Replica 1:1 los documentos de referencia (hoja carta, 612 x 792 pt):
+ * todas las medidas de `globals.css` (bloque `.doc`) estan en puntos y salen
+ * de las coordenadas exactas de los PDF originales.
+ */
 type Props = {
   docLabel: "COTIZACIÓN" | "FACTURA";
   number: string;
+  /** Fecha ya formateada como dd-mm-aaaa */
   date: string;
-  secondaryDateLabel: string;
-  secondaryDate: string | null;
+  secondaryDateLabel?: string;
+  secondaryDate?: string | null;
   clientName: string;
   clientCompany: string | null;
-  clientEmail: string | null;
-  clientPhone: string | null;
+  clientEmail?: string | null;
+  clientPhone?: string | null;
+  /** RUC y dirección del cliente (del directorio). Vacíos se imprimen como ____ */
+  clientTaxId?: string | null;
+  clientAddress?: string | null;
   items: LineItem[];
   subtotal: number;
   taxRate: number;
@@ -25,217 +32,364 @@ type Props = {
   projectName?: string | null;
   projectDescription?: string | null;
   paymentMethod?: string | null;
-  /** El badge de estado ya renderizado (mismo componente que usan las listas),
-   *  para que el documento y la lista muestren siempre el mismo lenguaje visual. */
+  /** Se conserva por compatibilidad; el estado no se imprime en el documento. */
   statusTag?: React.ReactNode;
   company?: CompanySettings | null;
 };
 
-export default function DocumentTemplate({
-  docLabel,
-  number,
-  date,
-  secondaryDateLabel,
-  secondaryDate,
-  clientName,
-  clientCompany,
-  clientEmail,
-  clientPhone,
-  items,
-  subtotal,
-  taxRate,
-  taxAmount,
-  total,
-  notes,
-  projectName,
-  projectDescription,
-  paymentMethod,
-  statusTag,
-  company,
-}: Props) {
-  const rawPrimary = company?.brand_primary ?? DEFAULT_BRAND_PRIMARY;
-  const rawSecondary = company?.brand_secondary ?? DEFAULT_BRAND_SECONDARY;
-  const primary = isValidHex(rawPrimary) ? rawPrimary : DEFAULT_BRAND_PRIMARY;
-  const secondary = isValidHex(rawSecondary) ? rawSecondary : DEFAULT_BRAND_SECONDARY;
+const BLANK = "____";
 
+export default function DocumentTemplate(props: Props) {
+  const { company } = props;
   const currency = company?.currency ?? "USD";
   const locale = company?.locale ?? "es-PA";
-  const money = (v: unknown) => formatMoney(v, currency, locale);
-
-  const hasCompanyInfo = !!(
-    company &&
-    (company.company_name ||
-      company.logo_url ||
-      company.company_email ||
-      company.company_phone ||
-      company.company_address)
-  );
+  const money = (v: unknown) => docMoney(v, currency, locale);
 
   return (
-    <article
-      className="print-sheet relative bg-white border border-line rounded-sm shadow-sm
-                 p-5 sm:p-8 md:p-10 max-w-3xl mx-auto overflow-hidden"
-      style={{ borderLeft: `4px solid ${primary}` }}
-      aria-label={`${docLabel} ${number}`}
-    >
-      {statusTag && (
-        <div className="absolute top-5 sm:top-8 md:top-10 right-5 sm:right-8 md:right-10">
-          {statusTag}
-        </div>
-      )}
-
-      <header
-        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 pb-6 mb-6"
-        style={{ borderBottom: `1px solid ${hexToRgba(primary, 0.15)}` }}
+    <div className="doc-scroll">
+      <article
+        className={`doc print-sheet ${props.docLabel === "FACTURA" ? "doc--invoice" : "doc--quote"}`}
+        aria-label={`${props.docLabel} ${props.number}`}
       >
-        <div className="min-w-0">
-          {hasCompanyInfo ? (
-            <>
-              {company?.logo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={company.logo_url}
-                  alt={company.company_name ?? "Logo"}
-                  className="max-h-12 max-w-[180px] object-contain object-left mb-2"
-                />
-              )}
-              {company?.company_name && (
-                <p className="font-display font-medium text-ink leading-tight">
-                  {company.company_name}
-                </p>
-              )}
-              <div className="text-xs text-slate mt-1 space-y-0.5">
-                {company?.company_address && <p>{company.company_address}</p>}
-                {company?.company_email && <p>{company.company_email}</p>}
-                {company?.company_phone && <p>{company.company_phone}</p>}
-                {company?.tax_id && <p>ID fiscal: {company.tax_id}</p>}
-              </div>
-            </>
-          ) : (
-            <DocLabel text={docLabel} secondary={secondary} />
+        <div className="doc-rule" />
+
+        {props.docLabel === "FACTURA" ? (
+          <InvoiceBody {...props} money={money} />
+        ) : (
+          <QuoteBody {...props} money={money} />
+        )}
+
+        <footer className="doc-footer">
+          <div className="doc-rule" />
+          {company?.company_address && (
+            <p className="doc-address">{company.company_address}</p>
           )}
-        </div>
-
-        <div className="sm:text-right shrink-0">
-          {hasCompanyInfo && <DocLabel text={docLabel} secondary={secondary} />}
-          <p className="font-mono text-xl sm:text-2xl font-semibold" style={{ color: primary }}>
-            {number}
-          </p>
-          <div className="text-sm text-slate mt-2 space-y-0.5">
-            <p>
-              Fecha: <span className="font-mono text-ink">{date}</span>
-            </p>
-            {secondaryDate && (
-              <p>
-                {secondaryDateLabel}: <span className="font-mono text-ink">{secondaryDate}</span>
-              </p>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <section className="mb-8">
-        <p className="field-label">Cliente</p>
-        <p className="font-display font-medium text-ink">{clientName}</p>
-        {clientCompany && <p className="text-sm text-slate">{clientCompany}</p>}
-        {clientEmail && <p className="text-sm text-slate break-words">{clientEmail}</p>}
-        {clientPhone && <p className="text-sm text-slate">{clientPhone}</p>}
-      </section>
-
-      {(projectName || projectDescription) && (
-        <section className="mb-8">
-          <p className="field-label">Proyecto</p>
-          {projectName && <p className="font-display font-medium text-ink">{projectName}</p>}
-          {projectDescription && (
-            <p className="text-sm text-slate whitespace-pre-wrap break-words">{projectDescription}</p>
-          )}
-        </section>
-      )}
-
-      <div className="print-scroll -mx-5 sm:mx-0 px-5 sm:px-0 overflow-x-auto">
-        <table className="w-full min-w-[420px] sm:min-w-0 text-sm mb-6">
-          <caption className="sr-only">Conceptos de la {docLabel.toLowerCase()}</caption>
-          <thead>
-            <tr
-              className="text-left text-xs uppercase tracking-wide text-slate"
-              style={{ borderBottom: `1px solid ${hexToRgba(primary, 0.3)}` }}
-            >
-              <th scope="col" className="py-2 font-medium">Descripción</th>
-              <th scope="col" className="py-2 font-medium text-right w-14">Cant.</th>
-              <th scope="col" className="py-2 font-medium text-right w-28">Precio</th>
-              <th scope="col" className="py-2 font-medium text-right w-28">Importe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, i) => (
-              <tr key={i} className="border-b border-line align-top">
-                <td className="py-2.5 pr-3 text-ink break-words">{item.description}</td>
-                <td className="py-2.5 text-right font-mono text-ink tabular-nums">
-                  {num(item.quantity)}
-                </td>
-                <td className="py-2.5 text-right font-mono text-ink tabular-nums whitespace-nowrap">
-                  {money(item.unit_price)}
-                </td>
-                <td className="py-2.5 text-right font-mono text-ink tabular-nums whitespace-nowrap">
-                  {money(num(item.quantity) * num(item.unit_price))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex justify-end mb-8 print-keep">
-        <dl className="w-full sm:w-64 text-sm space-y-1.5">
-          <div className="flex justify-between text-slate">
-            <dt>Subtotal</dt>
-            <dd className="font-mono tabular-nums">{money(subtotal)}</dd>
-          </div>
-          <div className="flex justify-between text-slate">
-            <dt>Impuesto ({num(taxRate)}%)</dt>
-            <dd className="font-mono tabular-nums">{money(taxAmount)}</dd>
-          </div>
-          <div
-            className="flex justify-between font-semibold text-base pt-1.5 mt-1.5"
-            style={{ borderTop: `2px solid ${primary}`, color: primary }}
-          >
-            <dt>Total</dt>
-            <dd className="font-mono tabular-nums">{money(total)}</dd>
-          </div>
-        </dl>
-      </div>
-
-      {(notes || paymentMethod) && (
-        <section className="border-t border-line pt-4 print-keep space-y-3">
-          {paymentMethod && (
-            <div>
-              <p className="field-label">Método de pago</p>
-              <p className="text-sm text-ink">{paymentMethod}</p>
-            </div>
-          )}
-          {notes && (
-            <div>
-              <p className="field-label">Notas</p>
-              <p className="text-sm text-slate whitespace-pre-wrap break-words">{notes}</p>
-            </div>
-          )}
-        </section>
-      )}
-    </article>
+        </footer>
+      </article>
+    </div>
   );
 }
 
-/** Etiqueta "COTIZACIÓN"/"FACTURA" con un punto en el color secundario de
- *  marca — el unico lugar donde aparece ese segundo color, a proposito. */
-function DocLabel({ text, secondary }: { text: string; secondary: string }) {
+type BodyProps = Props & { money: (v: unknown) => string };
+
+/* ------------------------------------------------------------------ */
+/* Encabezado: datos del emisor                                        */
+/* ------------------------------------------------------------------ */
+
+function Logo({ company }: { company?: CompanySettings | null }) {
+  if (!company?.logo_url) return null;
   return (
-    <p className="text-xs uppercase tracking-widest text-slate mb-1 inline-flex items-center gap-1.5">
-      <span
-        className="inline-block w-1.5 h-1.5 rounded-[1px]"
-        style={{ backgroundColor: secondary }}
-        aria-hidden="true"
-      />
-      {text}
-    </p>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className="doc-logo" src={company.logo_url} alt={company.company_name ?? "Logo"} />
   );
+}
+
+function IssuerInfo({
+  company,
+  underlineEmail,
+}: {
+  company?: CompanySettings | null;
+  underlineEmail?: boolean;
+}) {
+  return (
+    <>
+      {company?.company_name && (
+        <p className="doc-issuer-name">{company.company_name.toUpperCase()}</p>
+      )}
+      <div className="doc-issuer-info">
+        {company?.tax_id && <p>RUC: {company.tax_id}</p>}
+        {company?.company_phone && <p>Teléfono: {company.company_phone}</p>}
+        {company?.company_email && (
+          <p>
+            E-Mail:{" "}
+            <span className={underlineEmail ? "doc-underline" : undefined}>
+              {company.company_email}
+            </span>
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+
+function NumberBox({ number }: { number: string }) {
+  return (
+    <div className="doc-numbox">
+      <span>{displayNumber(number)}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* FACTURA                                                             */
+/* ------------------------------------------------------------------ */
+
+function InvoiceBody(p: BodyProps) {
+  const { money } = p;
+  const items = p.items ?? [];
+  const extraRows = (p.projectName ? 1 : 0) + (p.projectDescription ? 1 : 0);
+  const [payTitle, ...payLines] = splitLines(p.paymentMethod);
+
+  return (
+    <>
+      <div className="doc-head doc-head--invoice">
+        <Logo company={p.company} />
+        <NumberBox number={p.number} />
+        <div className="doc-issuer">
+          <IssuerInfo company={p.company} />
+        </div>
+      </div>
+
+      <div className="doc-client doc-client--invoice">
+        <div>
+          <p>
+            <b>Cliente</b>: {p.clientName || BLANK}
+          </p>
+          <p>
+            <b>Dirección:</b> {p.clientAddress || BLANK}
+          </p>
+        </div>
+        <div>
+          <p>
+            <b>RUC</b>: {p.clientTaxId || BLANK}
+          </p>
+          <p>
+            <b>Fecha</b>: {p.date}
+          </p>
+        </div>
+      </div>
+
+      <div className="inv-table">
+        <div className="inv-th">DETALLE</div>
+        <div className="inv-th">TOTAL</div>
+
+        <div
+          className="inv-body"
+          style={{ gridTemplateRows: `repeat(${items.length + extraRows}, auto) 1fr` }}
+        >
+          {items.map((item, i) => (
+            <Fragment key={i}>
+              <div className="inv-desc">
+                <Description text={item.description} />
+              </div>
+              <div className="inv-amount">
+                {money(num(item.quantity) * num(item.unit_price))}
+              </div>
+            </Fragment>
+          ))}
+          {p.projectName && (
+            <>
+              <div className="inv-project">{p.projectName}</div>
+              <div className="inv-amount" />
+            </>
+          )}
+          {p.projectDescription && (
+            <>
+              <div className="inv-project-desc">
+                <Description text={p.projectDescription} />
+              </div>
+              <div className="inv-amount" />
+            </>
+          )}
+          <div className="inv-desc inv-filler" />
+          <div className="inv-amount inv-filler" />
+        </div>
+      </div>
+
+      <div className="inv-bottom">
+        <div className="inv-pay">
+          <p className="inv-pay-title">Forma de pago:</p>
+          {payTitle && <p className="inv-pay-method">{payTitle}</p>}
+          {payLines.map((l, i) => (
+            <p key={i} className="inv-pay-line">
+              {l}
+            </p>
+          ))}
+          {p.notes && <p className="inv-pay-line inv-notes">{p.notes}</p>}
+        </div>
+
+        <div className="inv-totals">
+          <div className="inv-tl">Subtotal</div>
+          <div className="inv-tv">{money(p.subtotal)}</div>
+          <div className="inv-tl">ITBMS</div>
+          <div className="inv-tv">{money(p.taxAmount)}</div>
+          <div className="inv-tl inv-total">TOTAL</div>
+          <div className="inv-tv inv-total">{money(p.total)}</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* COTIZACIÓN                                                          */
+/* ------------------------------------------------------------------ */
+
+function QuoteBody(p: BodyProps) {
+  const { money } = p;
+  const items = p.items ?? [];
+  const client = joinClient(p.clientCompany, p.clientName);
+  const last = items.length - 1;
+
+  return (
+    <>
+      <div className="doc-head doc-head--quote">
+        <Logo company={p.company} />
+        <p className="doc-title">COTIZACIÓN</p>
+        <NumberBox number={p.number} />
+        <div className="doc-issuer">
+          <IssuerInfo company={p.company} underlineEmail />
+        </div>
+      </div>
+
+      <div className="doc-client doc-client--quote">
+        <p>
+          <b>Cliente</b>: {client || BLANK}
+        </p>
+        {p.projectName && (
+          <p>
+            <b>Proyecto</b>: {p.projectName}
+          </p>
+        )}
+        {p.projectDescription && <p className="doc-project-desc">{p.projectDescription}</p>}
+        <p>
+          <b>Fecha</b>: {p.date}
+        </p>
+      </div>
+
+      <div
+        className="q-table"
+        style={{
+          // Filas: encabezado, conceptos, 2 filas vacías, Subtotal, ITBMS, TOTAL
+          gridTemplateRows: `21.9pt repeat(${Math.max(items.length, 1)}, auto) 25.4pt 25.6pt 25.6pt 25.7pt 28.9pt`,
+        }}
+      >
+        <div className="q-th k1">Descripción</div>
+        <div className="q-th k2">Cantidad</div>
+        <div className="q-th k3">Precio unit.</div>
+        <div className="q-th k4">Costo</div>
+
+        {items.map((item, i) => {
+          const isLast = i === last;
+          const qty = num(item.quantity);
+          return (
+            <Fragment key={i}>
+              {/* La descripción del último concepto ocupa también las dos filas vacías */}
+              <div
+                className={`q-desc k1 ${isLast ? "q-desc--last" : "q-sep"}`}
+                style={isLast ? { gridRow: "span 3" } : undefined}
+              >
+                <Description text={item.description} />
+              </div>
+              <div className="q-num k2 q-sep">{qty}</div>
+              <div className="q-num k3 q-sep">{qty !== 1 ? money(item.unit_price) : ""}</div>
+              <div className="q-num k4 q-sep">{money(qty * num(item.unit_price))}</div>
+            </Fragment>
+          );
+        })}
+
+        {items.length === 0 && (
+          <>
+            <div className="q-desc q-desc--last k1" style={{ gridRow: "span 3" }} />
+            <div className="q-num k2 q-sep" />
+            <div className="q-num k3 q-sep" />
+            <div className="q-num k4 q-sep" />
+          </>
+        )}
+
+        {/* Dos filas vacías bajo los conceptos, como en la plantilla original */}
+        <div className="q-filler k2 q-sep" />
+        <div className="q-filler k3 q-sep" />
+        <div className="q-filler k4 q-sep" />
+        <div className="q-filler k2" />
+        <div className="q-filler k3" />
+        <div className="q-filler k4" />
+
+        <div className="q-tot k1 q-solid q-sep" />
+        <div className="q-tot k2 q-solid q-sep" />
+        <div className="q-tot k3 q-solid q-sep q-tl">Subtotal</div>
+        <div className="q-tot k4 q-solid q-sep q-tv">{money(p.subtotal)}</div>
+
+        <div className="q-tot k1" />
+        <div className="q-tot k2" />
+        <div className="q-tot k3 q-tl">{num(p.taxAmount) !== 0 ? "ITBMS" : ""}</div>
+        <div className="q-tot k4 q-tv">{money(p.taxAmount)}</div>
+
+        <div className="q-tot q-tot--big k1 q-solid q-solid-b" />
+        <div className="q-tot q-tot--big k2 q-solid q-solid-b" />
+        <div className="q-tot q-tot--big k3 q-solid q-solid-b q-tl q-total">TOTAL</div>
+        <div className="q-tot q-tot--big k4 q-solid q-solid-b q-tv q-total">{money(p.total)}</div>
+      </div>
+
+      <div className="q-details">
+        <p className="q-details-title">Detalles de la cotización:</p>
+        {p.notes && <p className="q-notes">{p.notes}</p>}
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilidades                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Texto de concepto: respeta saltos de línea y convierte "- ", "• " o "* " en viñetas. */
+function Description({ text }: { text: string | null | undefined }) {
+  const lines = (text ?? "").replace(/\r\n?/g, "\n").split("\n");
+  return (
+    <>
+      {lines.map((line, i) => {
+        const m = line.match(/^\s*(?:[-•*–·])\s+(.*)$/);
+        if (m) {
+          return (
+            <p key={i} className="doc-bullet">
+              <span className="doc-bullet-dot">•</span>
+              {m[1]}
+            </p>
+          );
+        }
+        return <p key={i}>{line.trim() === "" ? " " : line}</p>;
+      })}
+    </>
+  );
+}
+
+function splitLines(text: string | null | undefined): string[] {
+  return (text ?? "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
+
+/** "Jardines Urbanos" + "Xavier Mora" → "Jardines Urbanos. Xavier Mora" */
+function joinClient(company: string | null, name: string): string {
+  const c = (company ?? "").trim();
+  const n = (name ?? "").trim();
+  if (!c || c.toLowerCase() === n.toLowerCase()) return n || c;
+  if (!n) return c;
+  return `${c}${c.endsWith(".") ? "" : "."} ${n}`;
+}
+
+/**
+ * El número se imprime tal como lo escribió el usuario. Solo los números
+ * automáticos antiguos ("INV-2026-0263") se acortan a "263".
+ */
+export function displayNumber(number: string): string {
+  const raw = (number ?? "").trim();
+  const auto = raw.match(/^(?:COT|INV)-\d{4}-(\d+)$/);
+  return auto ? String(parseInt(auto[1], 10)) : raw;
+}
+
+/** Montos como en los documentos originales: "$500.00". */
+function docMoney(value: unknown, currency: string, locale: string): string {
+  if (currency === "USD") {
+    const n = num(value);
+    const s = Math.abs(n).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${n < 0 ? "-" : ""}$${s}`;
+  }
+  return formatMoney(value, currency, locale);
 }

@@ -13,7 +13,9 @@ export type CreateInvoiceResult =
 export async function createInvoiceFromQuote(
   supabase: SupabaseClient,
   quote: Quote,
-  company: CompanySettings | null
+  company: CompanySettings | null,
+  /** Número de factura escrito por el usuario (la numeración es manual). */
+  invoiceNumber: string
 ): Promise<CreateInvoiceResult> {
   const {
     data: { user },
@@ -23,17 +25,9 @@ export async function createInvoiceFromQuote(
     return { ok: false, message: "Tu sesión expiró. Vuelve a iniciar sesión." };
   }
 
-  // Numero atomico desde Postgres: no se repite ni con clics simultaneos.
-  const { data: invoiceNumber, error: numberError } = await supabase.rpc(
-    "next_document_number",
-    { p_prefix: "INV" }
-  );
-
-  if (numberError || !invoiceNumber) {
-    return {
-      ok: false,
-      message: "No se pudo asignar el número de factura. " + (numberError?.message ?? ""),
-    };
+  invoiceNumber = (invoiceNumber ?? "").trim();
+  if (!invoiceNumber) {
+    return { ok: false, message: "Escribe el número de factura." };
   }
 
   const termDays = company?.payment_terms_days ?? 15;
@@ -82,8 +76,14 @@ export async function createInvoiceFromQuote(
     .single();
 
   if (insertError || !data) {
-    // 23505 = indice unico: ya existe factura para esta cotizacion.
+    // 23505 = indice unico: numero repetido, o ya existe factura para esta cotizacion.
     if (insertError?.code === "23505") {
+      if (/invoice_number|user_number/i.test(insertError.message ?? "")) {
+        return {
+          ok: false,
+          message: `Ya tienes otra factura con el número ${invoiceNumber}. Usa uno distinto.`,
+        };
+      }
       return {
         ok: false,
         duplicate: true,

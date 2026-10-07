@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createInvoiceFromQuote } from "@/lib/createInvoice";
+import { askDocumentNumber } from "@/lib/documentNumber";
 import { Quote, CompanySettings } from "@/types";
 
 /**
@@ -35,8 +36,14 @@ export default function QuickInvoiceButton({
     e.stopPropagation();
     if (busy) return;
 
-    setBusy(true);
     setError(null);
+    const invoiceNumber = await askDocumentNumber(
+      supabase,
+      "invoice",
+      `Factura para la cotización ${quoteNumber}`
+    );
+    if (!invoiceNumber) return;
+    setBusy(true);
 
     const { data: quote, error: loadError } = await supabase
       .from("quotes")
@@ -50,7 +57,7 @@ export default function QuickInvoiceButton({
       return;
     }
 
-    const result = await createInvoiceFromQuote(supabase, quote as Quote, company);
+    const result = await createInvoiceFromQuote(supabase, quote as Quote, company, invoiceNumber);
 
     if (!result.ok) {
       setError(result.message);
