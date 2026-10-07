@@ -75,10 +75,10 @@
 }
 
 /* =====================================================================
-   DOCUMENTO (cotización / factura) — diseño dmc
-   Todo fluye con el contenido (nada en posición fija). Tamaños de letra,
-   grosores, colores y espaciados salen de los PDF de referencia; los anchos
-   son proporcionales al área útil de la hoja (486 pt en carta).
+   DOCUMENTO (cotización / factura)
+   Todo lo editable (colores, tipografía, tamaños, líneas, anchos) llega como
+   variables CSS desde lib/docDesign.ts → designVars(). Los valores por
+   defecto de abajo reproducen el diseño original de dmc.
    ===================================================================== */
 .doc-fit {
   width: 100%;
@@ -88,10 +88,42 @@
   margin: 0 auto;
 }
 .doc {
+  --doc-font: "Helvetica Neue", var(--font-mono), Helvetica, Arial, sans-serif;
   --doc-yellow: #fadd10;
+  --doc-accent-w: 2.5pt;
+  --doc-number: #c00000;
+  --doc-numbox-border: #000;
+  --doc-title: #000;
   --doc-grey: #535f65;
+  --doc-client-q: #535f65;
+  --doc-client-i: #000;
+  --doc-text: #000;
+  --doc-head-bg: #000;
+  --doc-head-fg: #fff;
   --doc-dots: #adadad;
+  --doc-strong: #000;
   --doc-edge: #e4e4e4;
+  --doc-bullet: #808785;
+  --doc-line: 0.5pt solid #adadad;
+  --doc-strong-line: 1pt solid #000;
+  --fs-issuer-i: 20pt;
+  --fs-issuer-q: 16pt;
+  --fs-info: 10pt;
+  --fs-title: 20pt;
+  --fs-number: 16pt;
+  --fs-client: 12pt;
+  --fs-th: 10pt;
+  --fs-item-q: 10pt;
+  --fs-item-i: 13pt;
+  --fs-amount: 12pt;
+  --fs-total-q: 15pt;
+  --fs-total-i: 14pt;
+  --fs-small: 10pt;
+  --fs-footer: 10pt;
+  --logo-w: 206pt;
+  --inv-detail: 75.7;
+  --inv-total: 24.3;
+
   box-sizing: border-box;
   width: 612pt;
   min-height: 792pt;
@@ -99,8 +131,8 @@
   display: flex;
   flex-direction: column;
   background: #fff;
-  color: #000;
-  font-family: "Helvetica Neue", var(--font-mono), Helvetica, Arial, sans-serif;
+  color: var(--doc-text);
+  font-family: var(--doc-font);
   font-size: 10pt;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -121,10 +153,10 @@
 .doc-rule {
   flex: none;
   height: 0;
-  border-top: 2.5pt solid var(--doc-yellow);
+  border-top: var(--doc-accent-w) solid var(--doc-yellow);
 }
 
-/* --- Encabezado: logo a la izquierda, datos del emisor a la derecha --- */
+/* --- Encabezado --- */
 .doc-head {
   display: flex;
   justify-content: space-between;
@@ -132,14 +164,16 @@
   gap: 12pt;
 }
 .doc-logo {
-  flex: 0 0 206pt;
-  max-width: 45%;
+  flex: 0 0 var(--logo-w);
+  max-width: 50%;
+}
+.doc-logo--hidden {
+  flex-basis: 0;
 }
 .doc-logo img {
   display: block;
   width: 100%;
-  max-width: 206pt;
-  max-height: 109.3pt;
+  max-height: calc(var(--logo-w) * 0.53);
   object-fit: contain;
   object-position: left top;
 }
@@ -162,17 +196,18 @@
   min-width: 95.6pt;
   min-height: 27pt;
   padding: 2pt 8pt;
-  border: 0.5pt solid #000;
+  border: 0.5pt solid var(--doc-numbox-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c00000;
-  font-size: 16pt;
+  color: var(--doc-number);
+  font-size: var(--fs-number);
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
 }
-.doc--invoice .doc-numbox {
+.doc--invoice .doc-head-right > .doc-numbox,
+.doc--invoice .doc-titlerow {
   margin-top: 9.85pt;
 }
 .doc-titlerow {
@@ -181,37 +216,39 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6pt 8pt;
-  margin-top: 15.15pt;
   margin-right: 2.7pt;
 }
+.doc--quote .doc-titlerow {
+  margin-top: 15.15pt;
+}
 .doc-title {
-  font-size: 20pt;
+  color: var(--doc-title);
+  font-size: var(--fs-title);
   font-weight: 700;
-  line-height: 23.84pt;
+  line-height: 1.192;
   white-space: nowrap;
 }
 .doc-issuer-name {
   margin-right: 4.05pt !important;
   font-weight: 700;
   color: var(--doc-grey);
+  line-height: 1.192;
 }
 .doc--invoice .doc-issuer-name {
   margin-top: 7.07pt !important;
-  font-size: 20pt;
-  line-height: 23.84pt;
+  font-size: var(--fs-issuer-i);
 }
 .doc--quote .doc-issuer-name {
   margin-top: 18.9pt !important;
   margin-bottom: 1.9pt !important;
-  font-size: 16pt;
-  line-height: 19.07pt;
+  font-size: var(--fs-issuer-q);
 }
 .doc-issuer-info {
   margin-right: 4.05pt;
   color: var(--doc-grey);
-  font-size: 10pt;
+  font-size: var(--fs-info);
   font-weight: 300;
-  line-height: 11.63pt;
+  line-height: 1.163;
 }
 .doc-underline {
   text-decoration: underline;
@@ -225,25 +262,26 @@
   grid-template-columns: 61.8% 1fr;
   column-gap: 10pt;
   margin: 15.1pt 0 20.6pt 12.26pt;
-  font-size: 12pt;
+  color: var(--doc-client-i);
+  font-size: var(--fs-client);
   font-weight: 300;
-  line-height: 17.9pt;
+  line-height: 1.49;
 }
 .q-client {
   margin: 1.65pt 0 2.15pt 12.26pt;
-  color: var(--doc-grey);
-  font-size: 12pt;
+  color: var(--doc-client-q);
+  font-size: var(--fs-client);
   font-weight: 300;
-  line-height: 18pt;
+  line-height: 1.5;
 }
 .q-project-desc {
-  font-size: 10pt;
-  line-height: 12pt;
+  font-size: var(--fs-small);
+  line-height: 1.2;
   white-space: pre-wrap;
   margin-bottom: 3pt !important;
 }
 
-/* --- Viñetas dentro de los conceptos --- */
+/* --- Viñetas --- */
 .doc-bullet {
   position: relative;
   padding-left: 1.1em;
@@ -251,17 +289,16 @@
 .doc-bullet-dot {
   position: absolute;
   left: 0;
-  color: #808785;
+  color: var(--doc-bullet);
 }
 
-/* --- FACTURA: tabla DETALLE / TOTAL --- */
+/* --- FACTURA --- */
 .inv-table,
 .inv-bottom {
   margin-left: 1.71%;
   width: 97.78%;
 }
-/* La tabla de la factura crece hasta llenar la hoja (como el original),
-   pero se encoge si el contenido es largo: el pie nunca queda solo en otra página. */
+/* Crece hasta llenar la hoja, pero se encoge si el contenido es largo */
 .inv-table {
   flex: 1 1 auto;
   display: flex;
@@ -270,27 +307,27 @@
 }
 .inv-row {
   display: grid;
-  grid-template-columns: minmax(0, 75.73fr) minmax(0, 24.27fr);
+  grid-template-columns: var(--inv-cols, minmax(0, 75.7fr) minmax(0, 24.3fr));
 }
 .inv-row--head > div {
   min-height: 21.8pt;
-  padding-top: 3.9pt;
-  background: #000;
-  color: #fff;
-  font-size: 10pt;
+  padding: 3.9pt 4pt 3pt;
+  background: var(--doc-head-bg);
+  color: var(--doc-head-fg);
+  font-size: var(--fs-th);
   font-weight: 700;
-  line-height: 11.9pt;
+  line-height: 1.19;
   text-align: center;
 }
 .inv-bodyrows {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  border-bottom: 1pt solid #000;
+  border-bottom: var(--doc-strong-line);
 }
 .inv-bodyrows .inv-c1 {
   border-left: 0.25pt solid var(--doc-edge);
-  border-right: 0.75pt dashed var(--doc-dots);
+  border-right: var(--doc-line);
   padding-left: 16.5pt;
   padding-right: 12pt;
 }
@@ -302,30 +339,30 @@
 }
 .inv-desc {
   padding-top: 10.8pt;
-  font-size: 13pt;
+  font-size: var(--fs-item-i);
   font-weight: 200;
-  line-height: 15.34pt;
+  line-height: 1.18;
 }
 .inv-project {
   padding-top: 16.5pt;
 }
 .inv-project-name {
-  font-size: 13pt;
+  font-size: var(--fs-item-i);
   font-weight: 700;
-  line-height: 15.5pt;
+  line-height: 1.192;
 }
 .inv-project-desc {
   padding-top: 4pt;
-  font-size: 13pt;
+  font-size: var(--fs-item-i);
   font-weight: 200;
-  line-height: 15.34pt;
+  line-height: 1.18;
 }
 .inv-amount {
   padding: 4.7pt 4pt 0;
   text-align: center;
-  font-size: 12pt;
+  font-size: var(--fs-amount);
   font-weight: 300;
-  line-height: 14.16pt;
+  line-height: 1.18;
   white-space: nowrap;
 }
 .inv-bottom {
@@ -336,116 +373,103 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: 10.4pt 8pt 0 1pt;
+  font-size: var(--fs-small);
 }
 .inv-pay-title {
-  font-size: 10pt;
   font-weight: 700;
-  line-height: 11.9pt;
+  line-height: 1.19;
 }
 .inv-pay-method {
-  margin-top: 11.4pt !important;
-  font-size: 10pt;
+  margin-top: 1.14em !important;
   font-weight: 700;
-  line-height: 12pt;
+  line-height: 1.2;
   color: #222;
 }
 .inv-pay-line {
-  font-size: 10pt;
   font-weight: 200;
   font-style: italic;
-  line-height: 12pt;
+  line-height: 1.2;
   color: #222;
 }
 .inv-notes {
-  margin-top: 8pt !important;
+  margin-top: 0.8em !important;
   white-space: pre-wrap;
 }
 .inv-totals {
-  flex: 0 0 39.61%;
+  flex: 0 0 calc(var(--inv-total) * 1% / 0.6127);
+  max-width: 60%;
 }
 .inv-trow {
   display: grid;
-  grid-template-columns: minmax(0, 72.9fr) minmax(0, 115.4fr);
+  grid-template-columns: minmax(max-content, 38.7fr) minmax(max-content, 61.3fr);
   min-height: 22pt;
 }
 .inv-tl,
 .inv-tv {
   padding-top: 5pt;
-  font-size: 12pt;
+  padding-bottom: 2pt;
+  font-size: var(--fs-amount);
   font-weight: 300;
-  line-height: 14.16pt;
+  line-height: 1.18;
   white-space: nowrap;
 }
 .inv-tl {
   text-align: right;
+  padding-left: 4pt;
   padding-right: 4.4pt;
-  border-right: 0.75pt dashed var(--doc-dots);
+  border-right: var(--doc-line);
 }
 .inv-tv {
   text-align: center;
+  padding-left: 4pt;
+  padding-right: 4pt;
   border-right: 0.25pt solid var(--doc-edge);
 }
-.inv-trow:nth-child(1) > div {
-  border-bottom: 0.75pt dashed var(--doc-dots);
+.inv-trow:first-child > div {
+  border-bottom: var(--doc-line);
 }
-.inv-trow:nth-child(n + 2) > div {
-  border-bottom: 1pt solid #000;
+.inv-trow:not(:first-child) > div {
+  border-bottom: var(--doc-strong-line);
 }
 .inv-trow--total > div {
   padding-top: 4.4pt;
-  font-size: 14pt;
+  font-size: var(--fs-total-i);
   font-weight: 700;
-  line-height: 16.7pt;
+  line-height: 1.193;
 }
 
-/* --- COTIZACIÓN: tabla de 4 columnas --- */
+/* --- COTIZACIÓN --- */
 .q-table {
   margin-left: 1.71%;
   width: 91.94%;
   display: grid;
-  grid-template-columns:
-    minmax(0, 252fr) minmax(max-content, 52.7fr) minmax(max-content, 63.8fr)
-    minmax(max-content, 78.5fr);
 }
-.q-table .k1 {
-  grid-column: 1;
+.q-table .qc {
+  border-right: var(--doc-line);
+}
+.q-table .qc--first {
   border-left: 0.25pt solid var(--doc-edge);
 }
-.q-table .k2 {
-  grid-column: 2;
-}
-.q-table .k3 {
-  grid-column: 3;
-}
-.q-table .k4 {
-  grid-column: 4;
+.q-table .qc--last {
   border-right: 0.25pt solid var(--doc-edge);
-}
-.q-table .k1,
-.q-table .k2,
-.q-table .k3 {
-  border-right: 0.75pt dashed var(--doc-dots);
 }
 .q-table .q-th {
   min-height: 21.9pt;
-  padding: 3.9pt 4.1pt 0;
-  background: #000;
-  color: #fff;
-  font-size: 10pt;
+  padding: 3.9pt 4.1pt 3pt;
+  background: var(--doc-head-bg);
+  color: var(--doc-head-fg);
+  font-size: var(--fs-th);
   font-weight: 700;
-  line-height: 12pt;
+  line-height: 1.2;
   white-space: nowrap;
-  border-left-color: #000;
-  border-right: 0.25pt solid #c8d3d9;
-}
-.q-table .q-th.k4 {
-  border-right-color: #bfbfbf;
+  border-left-color: var(--doc-head-bg);
+  border-right: 0.25pt solid var(--doc-head-bg);
 }
 .q-desc {
   padding: 3.1pt 3pt 0 4pt;
-  font-size: 10pt;
+  font-size: var(--fs-item-q);
   font-weight: 200;
-  line-height: 10.83pt;
+  line-height: 1.083;
 }
 .q-desc--last {
   padding-bottom: 18.9pt;
@@ -453,19 +477,19 @@
 .q-num {
   padding: 4.7pt 4.3pt 0;
   text-align: right;
-  font-size: 12pt;
+  font-size: var(--fs-amount);
   font-weight: 300;
-  line-height: 14.16pt;
+  line-height: 1.18;
   white-space: nowrap;
 }
 .q-table .q-sep {
-  border-bottom: 0.75pt dashed var(--doc-dots);
+  border-bottom: var(--doc-line);
 }
 .q-tot {
   padding-top: 5pt;
-  font-size: 12pt;
+  font-size: var(--fs-amount);
   font-weight: 300;
-  line-height: 14.16pt;
+  line-height: 1.18;
   white-space: nowrap;
 }
 .q-tl {
@@ -473,40 +497,42 @@
   padding-left: 4.4pt;
   padding-right: 4.4pt;
 }
+.q-tl--right {
+  text-align: right;
+}
 .q-tv {
   text-align: right;
   padding-left: 4.2pt;
   padding-right: 4.2pt;
 }
 .q-table .q-solid {
-  border-top: 1pt solid #000;
+  border-top: var(--doc-strong-line);
 }
 .q-table .q-solid-b {
-  border-bottom: 1pt solid #000;
+  border-bottom: var(--doc-strong-line);
 }
 .q-tot.q-total {
   padding-top: 4.1pt;
-  font-size: 15pt;
+  font-size: var(--fs-total-q);
   font-weight: 700;
-  line-height: 17.9pt;
+  line-height: 1.193;
 }
 .q-details {
   margin: 4.3pt 0 0 4pt;
+  font-size: var(--fs-small);
 }
 .q-details-title {
-  font-size: 10pt;
   font-weight: 700;
-  line-height: 11.9pt;
+  line-height: 1.19;
 }
 .q-notes {
-  margin-top: 4pt !important;
-  font-size: 10pt;
+  margin-top: 0.4em !important;
   font-weight: 200;
-  line-height: 12pt;
+  line-height: 1.2;
   white-space: pre-wrap;
 }
 
-/* --- Pie: línea amarilla + dirección --- */
+/* --- Pie --- */
 .doc-footer {
   margin-top: auto;
   padding-top: 20pt;
@@ -515,20 +541,34 @@
 .doc--quote .doc-footer {
   padding-bottom: 15.5pt;
 }
+
+/* Medición para imprimir en una sola página (ver DocFit) */
+.doc.doc--measure {
+  width: 612pt !important;
+  padding: 38.75pt 66pt 58pt 59.8pt !important;
+}
+.doc.doc--measure,
+.doc.doc--measure .inv-table,
+.doc.doc--measure .inv-bodyrows {
+  min-height: 0 !important;
+  flex: none !important;
+}
+.doc.doc--measure .doc-footer {
+  margin-top: 0 !important;
+}
+
 .doc-address {
-  margin: 7.3pt auto 0 !important;
+  margin: 0.73em auto 0 !important;
   max-width: 392pt;
-  min-height: 12.8pt;
+  min-height: 1.28em;
   text-align: center;
-  font-size: 10pt;
+  font-size: var(--fs-footer);
   font-weight: 700;
-  line-height: 12.8pt;
+  line-height: 1.28;
   white-space: pre-line;
 }
 
 @media print {
-  /* Hoja carta. Los márgenes del papel los pone @page, y la hoja ocupa el
-     ancho que quede: nunca se corta, use el navegador que use. */
   @page {
     size: letter;
     margin: 38.75pt 66pt 58pt 59.8pt;
@@ -540,7 +580,7 @@
     }
   }
 
-  /* Sin esto el navegador descarta el fondo negro del encabezado de la tabla */
+  /* Sin esto el navegador descarta el fondo del encabezado de la tabla */
   *,
   *::before,
   *::after {
@@ -565,25 +605,17 @@
     display: none !important;
   }
 
+  /* Siempre UNA página: DocFit calcula --print-zoom antes de imprimir */
   .doc-fit-inner {
-    zoom: 1 !important;
+    zoom: var(--print-zoom, 1) !important;
     width: auto !important;
   }
 
   .doc {
     width: auto !important;
-    min-height: 693pt !important;
+    min-height: calc(690pt / var(--print-zoom, 1)) !important;
     padding: 0 !important;
     box-shadow: none !important;
-  }
-
-  .doc-head,
-  .doc-bullet,
-  .inv-row,
-  .inv-bottom,
-  .q-details,
-  .doc-footer,
-  img {
     break-inside: avoid;
     page-break-inside: avoid;
   }

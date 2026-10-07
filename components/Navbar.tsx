@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/dashboard", label: "Cotizaciones", short: "Cotiz." },
   { href: "/invoices", label: "Facturas", short: "Fact." },
   { href: "/directory", label: "Directorio", short: "Dir." },
+  { href: "/design", label: "Diseño", short: "Diseño" },
   { href: "/settings", label: "Ajustes", short: "Ajust." },
 ];
 

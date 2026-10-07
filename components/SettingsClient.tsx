@@ -37,6 +37,7 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
   const [paymentTermsDays, setPaymentTermsDays] = useState<number>(num(base.payment_terms_days));
   const [followupDays, setFollowupDays] = useState<number>(num(base.followup_days) || 7);
   const [defaultNotes, setDefaultNotes] = useState(base.default_notes ?? "");
+  const [defaultPayment, setDefaultPayment] = useState(base.default_payment_method ?? "");
 
   const [logoUrl, setLogoUrl] = useState<string | null>(base.logo_url);
   const [logoPreview, setLogoPreview] = useState<string | null>(base.logo_url);
@@ -176,6 +177,22 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
       return;
     }
 
+    // Se guarda aparte: si falta la columna (migration_v9.sql sin correr),
+    // el resto de Ajustes se guarda igual y se avisa qué falta.
+    const { error: paymentError } = await supabase
+      .from("company_settings")
+      .update({ default_payment_method: defaultPayment.trim() || null })
+      .eq("user_id", user.id);
+
+    if (paymentError) {
+      setError(
+        "Se guardó todo excepto la forma de pago. En Supabase → SQL Editor corre el archivo supabase/migration_v9.sql y vuelve a guardar."
+      );
+      setSaving(false);
+      router.refresh();
+      return;
+    }
+
     setLogoUrl(finalLogoUrl);
     setLogoFile(null);
     setRemoveLogo(false);
@@ -225,10 +242,17 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
           </div>
           <div className="sm:col-span-2">
             <label className="field-label" htmlFor="companyAddress">Dirección</label>
-            <textarea id="companyAddress" className="field-input min-h-16" rows={2} value={companyAddress}
+            <textarea id="companyAddress" required className="field-input min-h-16" rows={2} value={companyAddress}
               onChange={(e) => setCompanyAddress(e.target.value)}
-              placeholder={"Calle 76 y Avenida de los Fundadores, Edificio Las Marquesas, Apartamento 8-A\nSan Francisco, Ciudad de Panamá, Panamá"} />
+              placeholder={"Calle, edificio, apartamento\nCorregimiento, ciudad, país"} />
             <p className="text-xs text-slate mt-1">Sale centrada al pie de cotizaciones y facturas. Usa Enter para partirla en dos líneas.</p>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label" htmlFor="defaultPayment">Forma de pago (sale en todas las facturas)</label>
+            <textarea id="defaultPayment" className="field-input min-h-24" rows={5} required value={defaultPayment}
+              onChange={(e) => setDefaultPayment(e.target.value)}
+              placeholder={"ACH\nBanco General\nCuenta de Ahorros\nNombre del titular\nNúmero de cuenta"} />
+            <p className="text-xs text-slate mt-1">La primera línea sale en negrita y el resto en cursiva. Puedes cambiarla en una factura puntual al editarla.</p>
           </div>
         </div>
       </section>

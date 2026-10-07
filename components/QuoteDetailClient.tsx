@@ -459,6 +459,16 @@ export default function QuoteDetailClient({
         </p>
       )}
 
+      {!company?.company_address?.trim() && (
+        <div role="alert" className="no-print card p-4 mb-6 border-brick/30 bg-brick/5">
+          <p className="text-sm font-medium text-brick">Falta tu dirección</p>
+          <p className="text-xs text-slate mt-0.5">Sale al pie de la cotización.</p>
+          <Link href="/settings" className="btn-primary text-xs py-1.5 mt-3 inline-flex">
+            Completar en Ajustes
+          </Link>
+        </div>
+      )}
+
       <DocumentTemplate
         docLabel="COTIZACIÓN"
         number={quote.quote_number}

@@ -149,6 +149,22 @@ export default function InvoiceDetailClient({
         renderBadge={(s) => <InvoiceStatusBadge status={s} />}
       />
 
+      {(!company?.company_address?.trim() ||
+        !(invoice.payment_method?.trim() || company?.default_payment_method?.trim())) && (
+        <div role="alert" className="no-print card p-4 mb-6 border-brick/30 bg-brick/5">
+          <p className="text-sm font-medium text-brick">A esta factura le faltan datos obligatorios</p>
+          <ul className="text-xs text-slate mt-1 list-disc pl-4 space-y-0.5">
+            {!company?.company_address?.trim() && <li>Tu dirección (sale al pie del documento).</li>}
+            {!(invoice.payment_method?.trim() || company?.default_payment_method?.trim()) && (
+              <li>La forma de pago.</li>
+            )}
+          </ul>
+          <Link href="/settings" className="btn-primary text-xs py-1.5 mt-3 inline-flex">
+            Completar en Ajustes
+          </Link>
+        </div>
+      )}
+
       <DocumentTemplate
         docLabel="FACTURA"
         number={invoice.invoice_number}
