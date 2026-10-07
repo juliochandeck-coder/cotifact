@@ -171,7 +171,7 @@ export const DEFAULT_DESIGN: DocDesign = {
 
 export const FONT_OPTIONS: { key: DocFont; label: string; css: string }[] = [
   { key: "helvetica", label: "Helvetica Neue (original)", css: '"Helvetica Neue", var(--font-mono), Helvetica, Arial, sans-serif' },
-  { key: "montserrat", label: "Montserrat (dmc)", css: "var(--font-montserrat), Montserrat, Arial, sans-serif" },
+  { key: "montserrat", label: "Montserrat (dmc)", css: "Montserrat, Arial, sans-serif" },
   { key: "inter", label: "Inter", css: "var(--font-mono), Inter, Arial, sans-serif" },
   { key: "arial", label: "Arial", css: "Arial, Helvetica, sans-serif" },
   { key: "georgia", label: "Georgia (serif)", css: "Georgia, 'Times New Roman', serif" },

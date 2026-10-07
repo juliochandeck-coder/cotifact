@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Arimo, Inter, Montserrat } from "next/font/google";
+import { Arimo, Inter } from "next/font/google";
 import "./globals.css";
 
 const body = Arimo({
@@ -14,13 +14,6 @@ const body = Arimo({
 const mono = Inter({
   subsets: ["latin"],
   variable: "--font-mono",
-  weight: ["200", "300", "400", "500", "600", "700"],
-});
-
-// Opción de tipografía para los documentos (página Diseño)
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
   weight: ["200", "300", "400", "500", "600", "700"],
 });
 
@@ -41,7 +34,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${body.variable} ${mono.variable} ${montserrat.variable}`}>
+    <html lang="es" className={`${body.variable} ${mono.variable}`}>
+      <head>
+        {/* Montserrat (opción de tipografía en Diseño). Se carga en el navegador,
+            no al compilar, para que la publicación no dependa de Google Fonts. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700&display=swap"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
