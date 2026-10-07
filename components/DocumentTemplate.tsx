@@ -119,7 +119,10 @@ function NumberBox({ number }: { number: string }) {
 function InvoiceBody(p: BodyProps) {
   const { money } = p;
   const items = p.items ?? [];
-  const [payTitle, ...payLines] = splitLines(p.paymentMethod);
+  // La forma de pago de la factura, o la fija de Ajustes si la factura no trae una.
+  const [payTitle, ...payLines] = splitLines(
+    p.paymentMethod?.trim() ? p.paymentMethod : p.company?.default_payment_method
+  );
 
   return (
     <>

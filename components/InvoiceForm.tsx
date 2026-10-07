@@ -54,7 +54,9 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
   const [dueDate, setDueDate] = useState(invoice?.due_date?.slice(0, 10) ?? "");
   const [projectName, setProjectName] = useState(invoice?.project_name ?? "");
   const [projectDescription, setProjectDescription] = useState(invoice?.project_description ?? "");
-  const [paymentMethod, setPaymentMethod] = useState(invoice?.payment_method ?? "");
+  const [paymentMethod, setPaymentMethod] = useState(
+    invoice?.payment_method ?? (mode === "create" ? settings?.default_payment_method ?? "" : "")
+  );
   const [taxRate, setTaxRate] = useState<number>(
     invoice ? num(invoice.tax_rate) : num(settings?.default_tax_rate ?? 7)
   );

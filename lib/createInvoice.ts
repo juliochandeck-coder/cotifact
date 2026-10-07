@@ -31,7 +31,8 @@ export async function createInvoiceFromQuote(
     return { ok: false, message: "Escribe el número de factura." };
   }
 
-  const paymentMethod = await lastPaymentMethod(supabase);
+  const paymentMethod =
+    company?.default_payment_method?.trim() || (await lastPaymentMethod(supabase));
 
   const termDays = company?.payment_terms_days ?? 15;
   const due = new Date();

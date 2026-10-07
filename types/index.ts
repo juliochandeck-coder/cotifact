@@ -91,6 +91,8 @@ export type CompanySettings = {
   locale: string;
   default_tax_rate: number;
   default_notes: string | null;
+  /** Forma de pago que sale en todas las facturas (migration_v9). */
+  default_payment_method?: string | null;
   payment_terms_days: number;
   followup_days: number;
   onboarded_at: string | null;

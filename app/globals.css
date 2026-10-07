@@ -290,7 +290,7 @@
 }
 .inv-bodyrows .inv-c1 {
   border-left: 0.25pt solid var(--doc-edge);
-  border-right: 0.75pt dashed var(--doc-dots);
+  border-right: 0.5pt solid var(--doc-dots);
   padding-left: 16.5pt;
   padding-right: 12pt;
 }
@@ -379,14 +379,14 @@
 .inv-tl {
   text-align: right;
   padding-right: 4.4pt;
-  border-right: 0.75pt dashed var(--doc-dots);
+  border-right: 0.5pt solid var(--doc-dots);
 }
 .inv-tv {
   text-align: center;
   border-right: 0.25pt solid var(--doc-edge);
 }
 .inv-trow:nth-child(1) > div {
-  border-bottom: 0.75pt dashed var(--doc-dots);
+  border-bottom: 0.5pt solid var(--doc-dots);
 }
 .inv-trow:nth-child(n + 2) > div {
   border-bottom: 1pt solid #000;
@@ -424,7 +424,7 @@
 .q-table .k1,
 .q-table .k2,
 .q-table .k3 {
-  border-right: 0.75pt dashed var(--doc-dots);
+  border-right: 0.5pt solid var(--doc-dots);
 }
 .q-table .q-th {
   min-height: 21.9pt;
@@ -459,7 +459,7 @@
   white-space: nowrap;
 }
 .q-table .q-sep {
-  border-bottom: 0.75pt dashed var(--doc-dots);
+  border-bottom: 0.5pt solid var(--doc-dots);
 }
 .q-tot {
   padding-top: 5pt;
@@ -515,6 +515,21 @@
 .doc--quote .doc-footer {
   padding-bottom: 15.5pt;
 }
+/* Medición para imprimir en una sola página (ver DocFit) */
+.doc.doc--measure {
+  width: 612pt !important;
+  padding: 38.75pt 66pt 58pt 59.8pt !important;
+}
+.doc.doc--measure,
+.doc.doc--measure .inv-table,
+.doc.doc--measure .inv-bodyrows {
+  min-height: 0 !important;
+  flex: none !important;
+}
+.doc.doc--measure .doc-footer {
+  margin-top: 0 !important;
+}
+
 .doc-address {
   margin: 7.3pt auto 0 !important;
   max-width: 392pt;
@@ -565,25 +580,21 @@
     display: none !important;
   }
 
+  /* Siempre UNA página: si el contenido no cabe, DocFit calcula --print-zoom
+     antes de imprimir y la hoja entera se reduce lo justo. */
   .doc-fit-inner {
-    zoom: 1 !important;
+    zoom: var(--print-zoom, 1) !important;
     width: auto !important;
   }
 
   .doc {
     width: auto !important;
-    min-height: 693pt !important;
+    min-height: calc(690pt / var(--print-zoom, 1)) !important;
     padding: 0 !important;
     box-shadow: none !important;
   }
 
-  .doc-head,
-  .doc-bullet,
-  .inv-row,
-  .inv-bottom,
-  .q-details,
-  .doc-footer,
-  img {
+  .doc {
     break-inside: avoid;
     page-break-inside: avoid;
   }
