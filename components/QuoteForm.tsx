@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import ItemRow from "@/components/ItemRow";
 import { LineItem, Quote, CompanySettings, Client, Service } from "@/types";
 import { computeTotals, formatMoney, num } from "@/lib/format";
 import { lastUsedNumber } from "@/lib/documentNumber";
@@ -427,81 +428,18 @@ export default function QuoteForm({ mode, quote, settings, clients, services }: 
           )}
         </div>
 
-        <ul className="space-y-4 sm:space-y-3">
-          {items.map((item, i) => {
-            const lineTotal = num(item.quantity) * num(item.unit_price);
-            return (
-              <li
-                key={i}
-                className="rounded-sm border border-line p-3 sm:border-0 sm:p-0
-                           sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end"
-              >
-                <div className="sm:col-span-5 mb-3 sm:mb-0">
-                  {i === 0 && <span className="field-label hidden sm:block">Descripción</span>}
-                  <label className="field-label sm:hidden">Descripción</label>
-                  <input
-                    className="field-input"
-                    value={item.description}
-                    onChange={(e) => updateItem(i, { description: e.target.value })}
-                    placeholder="Servicio o producto"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:contents">
-                  <div className="sm:col-span-2">
-                    {i === 0 && <span className="field-label hidden sm:block">Cant.</span>}
-                    <label className="field-label sm:hidden">Cantidad</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="any"
-                      inputMode="decimal"
-                      className="field-input text-right tabular-nums"
-                      value={item.quantity}
-                      onFocus={selectOnFocus}
-                      onChange={(e) => updateItem(i, { quantity: num(e.target.value) })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    {i === 0 && <span className="field-label hidden sm:block">Precio</span>}
-                    <label className="field-label sm:hidden">Precio unitario</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="any"
-                      inputMode="decimal"
-                      className="field-input text-right tabular-nums"
-                      value={item.unit_price}
-                      onFocus={selectOnFocus}
-                      onChange={(e) => updateItem(i, { unit_price: num(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between sm:col-span-3 sm:justify-end sm:gap-2 mt-3 sm:mt-0">
-                  <div className="sm:text-right sm:flex-1 sm:pb-2">
-                    {i === 0 && <span className="field-label hidden sm:block">Importe</span>}
-                    <span className="sm:hidden text-xs uppercase tracking-wide text-slate mr-2">
-                      Importe
-                    </span>
-                    <span className="font-mono text-sm text-ink tabular-nums">
-                      {money(lineTotal)}
-                    </span>
-                  </div>
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(i)}
-                      className="text-slate hover:text-brick text-sm px-2 sm:pb-2"
-                      aria-label={`Eliminar concepto ${i + 1}`}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+        <ul className="space-y-4">
+          {items.map((item, i) => (
+            <ItemRow
+              key={i}
+              item={item}
+              index={i}
+              canRemove={items.length > 1}
+              money={money}
+              onChange={(patch) => updateItem(i, patch)}
+              onRemove={() => removeItem(i)}
+            />
+          ))}
         </ul>
 
         <button
