@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { LineItem, Invoice, CompanySettings, Client } from "@/types";
 import { computeTotals, formatMoney, num } from "@/lib/format";
+import { lastUsedNumber } from "@/lib/documentNumber";
 
 const blankItem: LineItem = { description: "", quantity: 1, unit_price: 0 };
 function selectOnFocus(e: React.FocusEvent<HTMLInputElement>) {
@@ -28,6 +29,13 @@ type Props = {
 export default function InvoiceForm({ mode, invoice, settings, clients }: Props) {
   const router = useRouter();
   const supabase = createClient();
+  // Numeración manual: solo se muestra cuál fue la última como referencia.
+  const [lastNumber, setLastNumber] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== "create") return;
+    lastUsedNumber(supabase, "invoice").then(setLastNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const currency = settings?.currency ?? "USD";
   const locale = settings?.locale ?? "es-PA";
@@ -165,6 +173,12 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
 
     // Modo crear: factura suelta, sin cotizacion — para clientes que se
     // facturan directo (comision recurrente, por ejemplo).
+    if (!invoiceNumber.trim()) {
+      setError("Escribe el número de factura.");
+      setSaving(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -192,19 +206,7 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
       if (newClient) resolvedClientId = newClient.id;
     }
 
-    let finalNumber = invoiceNumber.trim();
-    if (!finalNumber) {
-      const { data: generated, error: numberError } = await supabase.rpc(
-        "next_document_number",
-        { p_prefix: "INV" }
-      );
-      if (numberError || !generated) {
-        setError("No se pudo asignar el número de factura. " + (numberError?.message ?? ""));
-        setSaving(false);
-        return;
-      }
-      finalNumber = generated;
-    }
+    const finalNumber = invoiceNumber.trim();
 
     const { data, error: insertError } = await supabase
       .from("invoices")
@@ -223,7 +225,7 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
       const duplicate = insertError?.code === "23505";
       setError(
         duplicate
-          ? "Ya tienes otra factura con ese número. Usa uno distinto o déjalo vacío."
+          ? "Ya tienes otra factura con ese número. Usa uno distinto."
           : "No se pudo guardar la factura. " + (insertError?.message ?? "")
       );
       setSaving(false);
@@ -248,7 +250,8 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
               className="field-input font-mono"
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
-              placeholder={mode === "create" ? "Se genera automático si lo dejas vacío" : undefined}
+              required
+              placeholder={lastNumber ? `La última fue ${lastNumber}` : "Ej. 264"}
             />
           </div>
           <div>
@@ -460,9 +463,10 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
 
         <div>
           <label className="field-label" htmlFor="paymentMethod">Método de pago</label>
-          <input id="paymentMethod" className="field-input" value={paymentMethod}
+          <textarea id="paymentMethod" className="field-input min-h-24" rows={5} value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
-            placeholder="Ej. Transferencia, Yappy, tarjeta…" />
+            placeholder={"ACH\nBanco General\nCuenta de Ahorros\nNombre del titular\nNúmero de cuenta"} />
+          <p className="text-xs text-slate mt-1">La primera línea sale en negrita y el resto en cursiva, como en la factura impresa.</p>
         </div>
         <div>
           <label className="field-label" htmlFor="notes">Notas</label>

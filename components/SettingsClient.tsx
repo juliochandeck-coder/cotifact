@@ -225,8 +225,10 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
           </div>
           <div className="sm:col-span-2">
             <label className="field-label" htmlFor="companyAddress">Dirección</label>
-            <input id="companyAddress" className="field-input" value={companyAddress}
-              onChange={(e) => setCompanyAddress(e.target.value)} />
+            <textarea id="companyAddress" className="field-input min-h-16" rows={2} value={companyAddress}
+              onChange={(e) => setCompanyAddress(e.target.value)}
+              placeholder={"Calle 76 y Avenida de los Fundadores, Edificio Las Marquesas, Apartamento 8-A\nSan Francisco, Ciudad de Panamá, Panamá"} />
+            <p className="text-xs text-slate mt-1">Sale centrada al pie de cotizaciones y facturas. Usa Enter para partirla en dos líneas.</p>
           </div>
         </div>
       </section>

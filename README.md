@@ -62,7 +62,7 @@ El correo sale con tu logo, tus colores y el detalle de conceptos. Las respuesta
 
 ## Notas técnicas
 
-**Numeración de documentos.** Los números salen de la función `next_document_number()` en Postgres, que incrementa un contador atómico por usuario, tipo y año. No se repiten aunque se generen dos documentos al mismo tiempo o se borren documentos anteriores. Además hay índices únicos sobre `(user_id, número)` y uno parcial que impide dos facturas para la misma cotización.
+**Numeración de documentos.** Es manual: el número de cada cotización y factura lo escribe el usuario (en el formulario, o en un cuadro que aparece al usar "Generar factura", "Facturar", "Duplicar", "Actualizar fee" o "Facturar todo"). La app muestra cuál fue el último usado como referencia. Hay índices únicos sobre `(user_id, número)`, así que no se pueden repetir, y uno parcial que impide dos facturas para la misma cotización. En el PDF el número se imprime tal cual se escribió.
 
 **PDF.** El botón usa la impresión del navegador con una hoja de estilos dedicada: oculta la interfaz, respeta saltos de página entre conceptos, y fuerza `print-color-adjust: exact` para que los colores de marca sí salgan impresos (sin esto el navegador los descarta). El título de la página se cambia al vuelo para que el archivo se guarde con el número del documento.
 

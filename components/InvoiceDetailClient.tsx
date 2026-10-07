@@ -9,7 +9,7 @@ import StatusControl from "@/components/StatusControl";
 import SendButton from "@/components/SendButton";
 import { InvoiceStatusBadge } from "@/components/StatusBadge";
 import { usePrintDocument } from "@/lib/usePrintDocument";
-import { formatDate, formatMoney, num } from "@/lib/format";
+import { formatDate, formatDateDMY, formatMoney, num, documentFilename } from "@/lib/format";
 import {
   Invoice,
   InvoiceStatus,
@@ -22,14 +22,24 @@ export default function InvoiceDetailClient({
   invoice,
   company,
   linkedQuoteNumber,
+  clientTaxId = null,
+  clientAddress = null,
 }: {
   invoice: Invoice;
   company: CompanySettings | null;
   linkedQuoteNumber: string | null;
+  clientTaxId?: string | null;
+  clientAddress?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const print = usePrintDocument(invoice.invoice_number);
+  const print = usePrintDocument(
+    documentFilename("invoice", {
+      issuer: company?.company_name,
+      client: invoice.client_company || invoice.client_name,
+      date: invoice.created_at,
+    })
+  );
   const [status, setStatus] = useState<InvoiceStatus>(invoice.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -142,13 +152,15 @@ export default function InvoiceDetailClient({
       <DocumentTemplate
         docLabel="FACTURA"
         number={invoice.invoice_number}
-        date={formatDate(invoice.created_at, locale) ?? ""}
+        date={formatDateDMY(invoice.created_at)}
         secondaryDateLabel="Vence"
         secondaryDate={formatDate(invoice.due_date, locale)}
         clientName={invoice.client_name}
         clientCompany={invoice.client_company}
         clientEmail={invoice.client_email}
         clientPhone={invoice.client_phone}
+        clientTaxId={clientTaxId}
+        clientAddress={clientAddress}
         items={invoice.items}
         subtotal={num(invoice.subtotal)}
         taxRate={num(invoice.tax_rate)}

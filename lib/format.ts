@@ -101,3 +101,53 @@ export function isValidHex(hex: string | null | undefined): hex is string {
 export function sanitizeSearch(input: string): string {
   return input.replace(/[,()\\"'*%]/g, " ").trim().slice(0, 80);
 }
+
+/**
+ * Fecha como en los documentos impresos: "04-09-2026" (dd-mm-aaaa).
+ * Las fechas `date` (YYYY-MM-DD) se leen tal cual; los timestamps se pasan
+ * a hora local para que un documento creado de noche no salga con el dia siguiente.
+ */
+export function formatDateDMY(value: string | null | undefined): string {
+  if (!value) return "";
+  let d: Date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    const [y, m, day] = value.trim().split("-").map(Number);
+    d = new Date(y, m - 1, day);
+  } else {
+    d = new Date(value);
+  }
+  if (Number.isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${d.getFullYear()}`;
+}
+
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+/**
+ * Nombre de archivo del PDF, con el mismo patron que los documentos originales:
+ *   Factura_Julio_Chandeck_Mendó_Coffee_Co._Septiembre_2026
+ *   04092026_Jardines_Urbanos_Cotización_Julio_Chandeck_Septiembre_2026
+ */
+export function documentFilename(
+  kind: "quote" | "invoice",
+  opts: { issuer: string | null | undefined; client: string; date: string | null | undefined }
+): string {
+  const d = opts.date ? new Date(opts.date) : new Date();
+  const valid = !Number.isNaN(d.getTime());
+  const month = valid ? `${MESES[d.getMonth()]} ${d.getFullYear()}` : "";
+  const issuer = (opts.issuer ?? "").trim().split(/\s+/).slice(0, 2).join(" ");
+  const parts =
+    kind === "invoice"
+      ? ["Factura", issuer, opts.client, month]
+      : [formatDateDMY(opts.date).replace(/-/g, ""), opts.client, "Cotización", issuer, month];
+  return parts
+    .map((p) => (p ?? "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/\s+/g, "_");
+}

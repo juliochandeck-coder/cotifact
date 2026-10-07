@@ -74,14 +74,452 @@
   }
 }
 
+/* =====================================================================
+   DOCUMENTO (cotización / factura)
+   Hoja carta 612 x 792 pt. Todas las medidas salen de las coordenadas
+   exactas de los PDF de referencia; no cambiarlas "a ojo".
+   ===================================================================== */
+.doc-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.doc {
+  --doc-yellow: #fadd10;
+  --doc-grey: #535f65;
+  --doc-dots: #adadad;
+  --doc-edge: #e4e4e4;
+  box-sizing: border-box;
+  width: 612pt;
+  min-height: 792pt;
+  margin: 0 auto;
+  padding: 38.75pt 66pt 58pt 59.8pt;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #000;
+  font-family: "Helvetica Neue", var(--font-mono), Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  -webkit-font-smoothing: antialiased;
+}
+.doc *,
+.doc *::before,
+.doc *::after {
+  box-sizing: border-box;
+}
+.doc p {
+  margin: 0;
+}
+.doc b {
+  font-weight: 700;
+}
+.doc-rule {
+  height: 0;
+  border-top: 2.5pt solid var(--doc-yellow);
+}
+
+/* --- Encabezado --- */
+.doc-head {
+  position: relative;
+  flex: none;
+}
+.doc-head--invoice {
+  height: 134.55pt;
+}
+.doc-head--quote {
+  height: 117.9pt;
+}
+.doc-logo {
+  position: absolute;
+  width: 206pt;
+  height: 109.3pt;
+  object-fit: contain;
+  object-position: left top;
+}
+.doc-head--invoice .doc-logo {
+  left: 1.7pt;
+  top: 10.15pt;
+}
+.doc-head--quote .doc-logo {
+  left: 12.5pt;
+  top: 6.95pt;
+}
+.doc-numbox {
+  position: absolute;
+  width: 95.6pt;
+  height: 27pt;
+  border: 0.5pt solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c00000;
+  font-size: 16pt;
+  font-weight: 700;
+  line-height: 1;
+}
+.doc-head--invoice .doc-numbox {
+  right: 0;
+  top: 9.85pt;
+}
+.doc-head--quote .doc-numbox {
+  right: 2.7pt;
+  top: 15.15pt;
+}
+.doc-title {
+  position: absolute;
+  left: 248.7pt;
+  top: 15.45pt;
+  font-size: 20pt;
+  font-weight: 700;
+  line-height: 23.84pt;
+  white-space: nowrap;
+}
+.doc-issuer {
+  position: absolute;
+  right: 4.05pt;
+  text-align: right;
+  color: var(--doc-grey);
+  white-space: nowrap;
+}
+.doc-head--invoice .doc-issuer {
+  top: 43.9pt;
+}
+.doc-head--quote .doc-issuer {
+  top: 61.05pt;
+}
+.doc-issuer-name {
+  font-weight: 700;
+}
+.doc-head--invoice .doc-issuer-name {
+  font-size: 20pt;
+  line-height: 23.84pt;
+}
+.doc-head--quote .doc-issuer-name {
+  font-size: 16pt;
+  line-height: 19.07pt;
+  margin-bottom: 1.9pt !important;
+}
+.doc-issuer-info {
+  font-size: 10pt;
+  font-weight: 300;
+  line-height: 11.63pt;
+}
+.doc-underline {
+  text-decoration: underline;
+  text-decoration-thickness: 0.5pt;
+  text-underline-offset: 1.5pt;
+}
+
+/* --- Datos del cliente --- */
+.doc-client {
+  margin-left: 12.26pt;
+  font-size: 12pt;
+  font-weight: 300;
+}
+.doc-client--invoice {
+  display: grid;
+  grid-template-columns: 292.86pt 1fr;
+  line-height: 17.9pt;
+  margin-bottom: 20.6pt;
+}
+.doc-client--quote {
+  color: var(--doc-grey);
+  line-height: 18pt;
+  margin-bottom: 2.15pt;
+}
+.doc-project-desc {
+  font-size: 10pt;
+  line-height: 12pt;
+  white-space: pre-wrap;
+  margin-bottom: 3pt !important;
+}
+
+/* --- Viñetas dentro de los conceptos --- */
+.doc-bullet {
+  position: relative;
+  padding-left: 1.1em;
+}
+.doc-bullet-dot {
+  position: absolute;
+  left: 0;
+  color: #808785;
+}
+
+/* --- FACTURA: tabla DETALLE / TOTAL --- */
+.inv-table {
+  margin-left: 8.3pt;
+  width: 475.4pt;
+  display: grid;
+  grid-template-columns: 360pt 115.4pt;
+}
+.inv-th {
+  height: 21.8pt;
+  background: #000;
+  color: #fff;
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 11.9pt;
+  padding-top: 3.9pt;
+  text-align: center;
+}
+.inv-body {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 360pt 115.4pt;
+  min-height: 323.2pt;
+  border-bottom: 1pt solid #000;
+}
+.inv-body > :nth-child(odd) {
+  border-left: 0.25pt solid var(--doc-edge);
+  border-right: 0.75pt dashed var(--doc-dots);
+  padding-left: 16.5pt;
+  padding-right: 12pt;
+}
+.inv-body > :nth-child(even) {
+  border-right: 0.25pt solid var(--doc-edge);
+}
+.inv-desc {
+  padding-top: 10.8pt;
+  font-size: 13pt;
+  font-weight: 200;
+  line-height: 15.34pt;
+}
+.inv-project {
+  padding-top: 16.5pt;
+  font-size: 13pt;
+  font-weight: 700;
+  line-height: 15.5pt;
+}
+.inv-project-desc {
+  padding-top: 4pt;
+  font-size: 13pt;
+  font-weight: 200;
+  line-height: 15.34pt;
+}
+.inv-amount {
+  padding-top: 4.7pt;
+  text-align: center;
+  font-size: 12pt;
+  font-weight: 300;
+  line-height: 14.16pt;
+}
+.inv-filler {
+  padding-top: 0 !important;
+}
+.inv-bottom {
+  margin-left: 8.3pt;
+  width: 475.4pt;
+  display: flex;
+  align-items: flex-start;
+}
+.inv-pay {
+  width: 287.1pt;
+  padding-left: 1pt;
+  padding-top: 10.4pt;
+  padding-right: 8pt;
+}
+.inv-pay-title {
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 11.9pt;
+}
+.inv-pay-method {
+  margin-top: 11.4pt !important;
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 12pt;
+  color: #222;
+}
+.inv-pay-line {
+  font-size: 10pt;
+  font-weight: 200;
+  font-style: italic;
+  line-height: 12pt;
+  color: #222;
+}
+.inv-notes {
+  margin-top: 8pt !important;
+  white-space: pre-wrap;
+}
+.inv-totals {
+  width: 188.3pt;
+  display: grid;
+  grid-template-columns: 72.9pt 115.4pt;
+  grid-template-rows: 22pt 21.9pt 22pt;
+}
+.inv-tl,
+.inv-tv {
+  padding-top: 5pt;
+  font-size: 12pt;
+  font-weight: 300;
+  line-height: 14.16pt;
+  white-space: nowrap;
+}
+.inv-tl {
+  text-align: right;
+  padding-right: 4.4pt;
+  border-right: 0.75pt dashed var(--doc-dots);
+}
+.inv-tv {
+  text-align: center;
+  border-right: 0.25pt solid var(--doc-edge);
+}
+.inv-totals > :nth-child(-n + 2) {
+  border-bottom: 0.75pt dashed var(--doc-dots);
+}
+.inv-totals > :nth-child(n + 3) {
+  border-bottom: 1pt solid #000;
+}
+.inv-total {
+  padding-top: 4.4pt;
+  font-size: 14pt;
+  font-weight: 700;
+  line-height: 16.7pt;
+}
+
+/* --- COTIZACIÓN: tabla de 4 columnas --- */
+.q-table {
+  margin-left: 8.3pt;
+  width: 447pt;
+  display: grid;
+  grid-template-columns: 252pt 52.7pt 63.8pt 78.5pt;
+}
+.q-table .k1 {
+  grid-column: 1;
+  border-left: 0.25pt solid var(--doc-edge);
+}
+.q-table .k2 {
+  grid-column: 2;
+}
+.q-table .k3 {
+  grid-column: 3;
+}
+.q-table .k4 {
+  grid-column: 4;
+  border-right: 0.25pt solid var(--doc-edge);
+}
+.q-table .k1,
+.q-table .k2,
+.q-table .k3 {
+  border-right: 0.75pt dashed var(--doc-dots);
+}
+.q-table .q-th {
+  background: #000;
+  color: #fff;
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 12pt;
+  padding: 3.9pt 4.1pt 0;
+  white-space: nowrap;
+  border-color: #000;
+  border-right: 0.25pt solid #c8d3d9;
+}
+.q-table .q-th.k4 {
+  border-right-color: #bfbfbf;
+}
+.q-desc {
+  padding: 3.1pt 3pt 0 4pt;
+  font-size: 10pt;
+  font-weight: 200;
+  line-height: 10.83pt;
+}
+.q-desc--last {
+  padding-bottom: 18.9pt;
+}
+.q-num {
+  padding: 4.7pt 4.3pt 0;
+  text-align: right;
+  font-size: 12pt;
+  font-weight: 300;
+  line-height: 14.16pt;
+  white-space: nowrap;
+}
+.q-table .q-sep {
+  border-bottom: 0.75pt dashed var(--doc-dots);
+}
+.q-tot {
+  padding-top: 5pt;
+  font-size: 12pt;
+  font-weight: 300;
+  line-height: 14.16pt;
+  white-space: nowrap;
+}
+.q-tl {
+  text-align: left;
+  padding-left: 4.4pt;
+}
+.q-tv {
+  text-align: right;
+  padding-right: 4.2pt;
+}
+.q-table .q-solid {
+  border-top: 1pt solid #000;
+}
+.q-table .q-solid-b {
+  border-bottom: 1pt solid #000;
+}
+.q-total {
+  padding-top: 4.1pt;
+  font-size: 15pt;
+  font-weight: 700;
+  line-height: 17.9pt;
+}
+.q-details {
+  margin-left: 4pt;
+  margin-top: 4.3pt;
+}
+.q-details-title {
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 11.9pt;
+}
+.q-notes {
+  margin-top: 4pt !important;
+  font-size: 10pt;
+  font-weight: 200;
+  line-height: 12pt;
+  white-space: pre-wrap;
+}
+
+/* --- Pie: línea amarilla + dirección --- */
+.doc-footer {
+  margin-top: auto;
+  padding-top: 20pt;
+  padding-bottom: 5pt;
+}
+/* En la cotización original el pie va 10.5 pt más arriba y 8.3 pt a la izquierda */
+.doc--quote .doc-footer {
+  padding-bottom: 15.5pt;
+  margin-left: -8.3pt;
+  margin-right: 8.3pt;
+}
+.doc-address {
+  margin: 7.3pt auto 0 !important;
+  max-width: 392pt;
+  text-align: center;
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 12.8pt;
+  white-space: pre-line;
+}
+
 @media print {
+  /* Hoja carta como el original. El número de página va en el margen
+     inferior, centrado, igual que en el PDF de referencia. */
   @page {
-    margin: 14mm;
-    size: auto;
+    size: letter;
+    margin: 38.75pt 0 58pt 0;
+    @bottom-center {
+      content: counter(page);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12pt;
+      color: #000;
+    }
   }
 
   /* CRITICO: sin esto el navegador descarta fondos y degradados al imprimir,
-     y el PDF sale sin los colores de marca del cliente. */
+     y el encabezado negro de la tabla sale en blanco. */
   *,
   *::before,
   *::after {
@@ -96,38 +534,35 @@
     padding: 0 !important;
   }
 
+  main {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .no-print {
     display: none !important;
   }
 
-  .print-sheet {
+  .doc-scroll {
+    overflow: visible !important;
+  }
+
+  /* Los márgenes superior/inferior los pone @page en cada página */
+  .doc {
     box-shadow: none !important;
-    border: none !important;
-    border-left-width: 4px !important;
-    border-left-style: solid !important;
-    padding: 0 0 0 18px !important;
-    max-width: none !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 694pt !important;
     margin: 0 !important;
   }
 
-  /* En pantalla la tabla puede desplazarse; al imprimir nunca. */
-  .print-scroll {
-    overflow: visible !important;
-  }
-  .print-scroll > * {
-    min-width: 0 !important;
-  }
-
-  /* Evita que un concepto quede partido entre dos paginas */
-  tr,
+  .doc-head,
+  .doc-bullet,
+  .inv-bottom,
+  .q-details,
+  .doc-footer,
   img {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  thead {
-    display: table-header-group;
-  }
-  .print-keep {
     break-inside: avoid;
     page-break-inside: avoid;
   }

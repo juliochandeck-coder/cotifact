@@ -30,14 +30,29 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     linkedQuoteNumber = quote?.quote_number ?? null;
   }
 
+  // RUC y dirección del cliente para el encabezado de la factura.
+  let clientTaxId: string | null = null;
+  let clientAddress: string | null = null;
+  if (invoice.client_id) {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("tax_id, address")
+      .eq("id", invoice.client_id)
+      .maybeSingle();
+    clientTaxId = client?.tax_id ?? null;
+    clientAddress = client?.address ?? null;
+  }
+
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-[860px] mx-auto px-4 py-8">
         <InvoiceDetailClient
           invoice={invoice as Invoice}
           company={company as CompanySettings | null}
           linkedQuoteNumber={linkedQuoteNumber}
+          clientTaxId={clientTaxId}
+          clientAddress={clientAddress}
         />
       </main>
     </div>
