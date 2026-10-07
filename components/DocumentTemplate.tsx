@@ -1,15 +1,16 @@
 import { Fragment } from "react";
 import { LineItem, CompanySettings } from "@/types";
 import { formatMoney, num } from "@/lib/format";
+import { DocDesign, designVars, resolveDesign } from "@/lib/docDesign";
 import DocFit from "@/components/DocFit";
 
 /**
- * Plantilla de impresion de cotizaciones y facturas (diseño dmc).
+ * Plantilla de impresion de cotizaciones y facturas.
  *
- * Todo el documento fluye con el contenido: no hay posiciones fijas, asi que
- * textos largos (nombre, proyecto, dirección, conceptos, forma de pago)
- * empujan lo de abajo en vez de encimarse o cortarse. Las medidas de
- * `globals.css` (bloque `.doc`) salen de los PDF de referencia.
+ * El aspecto (colores, tipografía, tamaños, tabla, textos, elementos visibles)
+ * sale del diseño que el usuario edita en la página "Diseño"
+ * (company_settings.doc_design). Sin diseño guardado se usa el original dmc.
+ * Todo fluye con el contenido; al imprimir siempre cabe en una página.
  */
 type Props = {
   docLabel: "COTIZACIÓN" | "FACTURA";
@@ -22,7 +23,7 @@ type Props = {
   clientCompany: string | null;
   clientEmail?: string | null;
   clientPhone?: string | null;
-  /** RUC y dirección del cliente (del directorio). Vacíos se imprimen como ____ */
+  /** RUC y dirección del cliente (del directorio). */
   clientTaxId?: string | null;
   clientAddress?: string | null;
   items: LineItem[];
@@ -37,43 +38,50 @@ type Props = {
   /** Se conserva por compatibilidad; el estado no se imprime en el documento. */
   statusTag?: React.ReactNode;
   company?: CompanySettings | null;
+  /** Diseño a usar en lugar del guardado (vista previa de la página Diseño). */
+  design?: DocDesign;
 };
 
-const BLANK = "____";
+type Ctx = Props & { d: DocDesign; money: (v: unknown) => string; blank: string };
 
 export default function DocumentTemplate(props: Props) {
   const { company } = props;
+  const d = props.design ?? resolveDesign(company?.doc_design);
   const currency = company?.currency ?? "USD";
   const locale = company?.locale ?? "es-PA";
   const money = (v: unknown) => docMoney(v, currency, locale);
   const isInvoice = props.docLabel === "FACTURA";
+  const ctx: Ctx = { ...props, d, money, blank: d.texts.blank };
 
   return (
     <DocFit>
+      {!d.show.pageNumber && (
+        <style>{"@media print { @page { @bottom-center { content: none; } } }"}</style>
+      )}
       <article
         className={`doc ${isInvoice ? "doc--invoice" : "doc--quote"}`}
+        style={designVars(d) as React.CSSProperties}
         aria-label={`${props.docLabel} ${props.number}`}
       >
         <div className="doc-rule" />
 
-        {isInvoice ? <InvoiceBody {...props} money={money} /> : <QuoteBody {...props} money={money} />}
+        {isInvoice ? <InvoiceBody {...ctx} /> : <QuoteBody {...ctx} />}
 
         <footer className="doc-footer">
           <div className="doc-rule" />
-          <p className="doc-address">{company?.company_address || ""}</p>
+          {d.show.footerAddress && <p className="doc-address">{company?.company_address || ""}</p>}
         </footer>
       </article>
     </DocFit>
   );
 }
 
-type BodyProps = Props & { money: (v: unknown) => string };
-
 /* ------------------------------------------------------------------ */
 /* Encabezado                                                          */
 /* ------------------------------------------------------------------ */
 
-function Logo({ company }: { company?: CompanySettings | null }) {
+function Logo({ company, d }: { company?: CompanySettings | null; d: DocDesign }) {
+  if (!d.show.logo) return <div className="doc-logo doc-logo--hidden" />;
   return (
     <div className="doc-logo">
       {company?.logo_url && (
@@ -86,24 +94,31 @@ function Logo({ company }: { company?: CompanySettings | null }) {
 
 function IssuerInfo({
   company,
+  d,
   underlineEmail,
 }: {
   company?: CompanySettings | null;
+  d: DocDesign;
   underlineEmail?: boolean;
 }) {
+  const blank = d.texts.blank;
   return (
     <>
       <p className="doc-issuer-name">{(company?.company_name ?? "").toUpperCase()}</p>
-      <div className="doc-issuer-info">
-        <p>RUC: {company?.tax_id || BLANK}</p>
-        <p>Teléfono: {company?.company_phone || BLANK}</p>
-        <p>
-          E-Mail:{" "}
-          <span className={underlineEmail ? "doc-underline" : undefined}>
-            {company?.company_email || BLANK}
-          </span>
-        </p>
-      </div>
+      {d.show.issuerInfo && (
+        <div className="doc-issuer-info">
+          <p>
+            {d.texts.rucLabel}: {company?.tax_id || blank}
+          </p>
+          <p>Teléfono: {company?.company_phone || blank}</p>
+          <p>
+            E-Mail:{" "}
+            <span className={underlineEmail ? "doc-underline" : undefined}>
+              {company?.company_email || blank}
+            </span>
+          </p>
+        </div>
+      )}
     </>
   );
 }
@@ -116,8 +131,9 @@ function NumberBox({ number }: { number: string }) {
 /* FACTURA                                                             */
 /* ------------------------------------------------------------------ */
 
-function InvoiceBody(p: BodyProps) {
-  const { money } = p;
+function InvoiceBody(p: Ctx) {
+  const { money, d, blank } = p;
+  const t = d.texts;
   const items = p.items ?? [];
   // La forma de pago de la factura, o la fija de Ajustes si la factura no trae una.
   const [payTitle, ...payLines] = splitLines(
@@ -127,32 +143,39 @@ function InvoiceBody(p: BodyProps) {
   return (
     <>
       <header className="doc-head">
-        <Logo company={p.company} />
+        <Logo company={p.company} d={d} />
         <div className="doc-head-right">
-          <NumberBox number={p.number} />
-          <IssuerInfo company={p.company} />
+          {t.invoiceTitle.trim() ? (
+            <div className="doc-titlerow">
+              <p className="doc-title">{t.invoiceTitle}</p>
+              <NumberBox number={p.number} />
+            </div>
+          ) : (
+            <NumberBox number={p.number} />
+          )}
+          <IssuerInfo company={p.company} d={d} />
         </div>
       </header>
 
       <section className="inv-client">
         <p>
-          <b>Cliente</b>: {p.clientName || BLANK}
+          <b>{t.clientLabel}</b>: {p.clientName || blank}
         </p>
         <p>
-          <b>RUC</b>: {p.clientTaxId || BLANK}
+          <b>{t.rucLabel}</b>: {p.clientTaxId || blank}
         </p>
         <p>
-          <b>Dirección:</b> {p.clientAddress || BLANK}
+          <b>{t.addressLabel}:</b> {p.clientAddress || blank}
         </p>
         <p>
-          <b>Fecha</b>: {p.date}
+          <b>{t.dateLabel}</b>: {p.date}
         </p>
       </section>
 
       <section className="inv-table">
         <div className="inv-row inv-row--head">
-          <div className="inv-c1">DETALLE</div>
-          <div className="inv-c2">TOTAL</div>
+          <div className="inv-c1">{t.colDetail}</div>
+          <div className="inv-c2">{t.colTotal}</div>
         </div>
 
         <div className="inv-bodyrows">
@@ -188,7 +211,7 @@ function InvoiceBody(p: BodyProps) {
 
       <section className="inv-bottom">
         <div className="inv-pay">
-          <p className="inv-pay-title">Forma de pago:</p>
+          <p className="inv-pay-title">{t.paymentTitle}</p>
           {payTitle && <p className="inv-pay-method">{payTitle}</p>}
           {payLines.map((l, i) => (
             <p key={i} className="inv-pay-line">
@@ -200,15 +223,17 @@ function InvoiceBody(p: BodyProps) {
 
         <div className="inv-totals">
           <div className="inv-trow">
-            <div className="inv-tl">Subtotal</div>
+            <div className="inv-tl">{t.subtotal}</div>
             <div className="inv-tv">{money(p.subtotal)}</div>
           </div>
-          <div className="inv-trow">
-            <div className="inv-tl">ITBMS</div>
-            <div className="inv-tv">{money(p.taxAmount)}</div>
-          </div>
+          {d.show.taxRow && (
+            <div className="inv-trow">
+              <div className="inv-tl">{t.tax}</div>
+              <div className="inv-tv">{money(p.taxAmount)}</div>
+            </div>
+          )}
           <div className="inv-trow inv-trow--total">
-            <div className="inv-tl">TOTAL</div>
+            <div className="inv-tl">{t.total}</div>
             <div className="inv-tv">{money(p.total)}</div>
           </div>
         </div>
@@ -221,96 +246,155 @@ function InvoiceBody(p: BodyProps) {
 /* COTIZACIÓN                                                          */
 /* ------------------------------------------------------------------ */
 
-function QuoteBody(p: BodyProps) {
-  const { money } = p;
+type ColKey = "desc" | "qty" | "unit" | "cost";
+
+function QuoteBody(p: Ctx) {
+  const { money, d, blank } = p;
+  const t = d.texts;
   const items = p.items ?? [];
   const client = joinClient(p.clientCompany, p.clientName);
   const rows = items.length ? items : [{ description: "", quantity: 0, unit_price: 0 }];
 
+  // Columnas visibles y sus anchos relativos
+  const cols: { key: ColKey; label: string; w: number }[] = [
+    { key: "desc", label: t.colDescription, w: d.table.colDescription },
+    ...(d.show.qtyColumn ? [{ key: "qty" as ColKey, label: t.colQty, w: d.table.colQty }] : []),
+    ...(d.show.unitColumn ? [{ key: "unit" as ColKey, label: t.colUnit, w: d.table.colUnit }] : []),
+    { key: "cost", label: t.colCost, w: d.table.colCost },
+  ];
+  const last = cols.length - 1;
+  const labelCol = last - 1; // columna donde van "Subtotal", "ITBMS", "TOTAL"
+  const colTemplate = cols
+    .map((c) => (c.key === "desc" ? `minmax(0, ${c.w}fr)` : `minmax(max-content, ${c.w}fr)`))
+    .join(" ");
+  const empty = d.table.emptyRows;
+
+  const cell = (
+    i: number,
+    extra = "",
+    content: React.ReactNode = null,
+    style?: React.CSSProperties
+  ) => (
+    <div
+      className={`qc ${i === 0 ? "qc--first" : ""} ${i === last ? "qc--last" : ""} ${extra}`}
+      style={{ gridColumn: i + 1, ...style }}
+    >
+      {content}
+    </div>
+  );
+
+  const totalsRow = (label: string, value: string, cls: string) =>
+    cols.map((c, i) => (
+      <Fragment key={c.key}>
+        {cell(
+          i,
+          `q-tot ${cls} ${i === labelCol ? (c.key === "desc" ? "q-tl q-tl--right" : "q-tl") : ""} ${
+            i === last ? "q-tv" : ""
+          }`,
+          i === labelCol ? label : i === last ? value : null
+        )}
+      </Fragment>
+    ));
+
   return (
     <>
       <header className="doc-head">
-        <Logo company={p.company} />
+        <Logo company={p.company} d={d} />
         <div className="doc-head-right">
           <div className="doc-titlerow">
-            <p className="doc-title">COTIZACIÓN</p>
+            {t.quoteTitle.trim() && <p className="doc-title">{t.quoteTitle}</p>}
             <NumberBox number={p.number} />
           </div>
-          <IssuerInfo company={p.company} underlineEmail />
+          <IssuerInfo company={p.company} d={d} underlineEmail />
         </div>
       </header>
 
       <section className="q-client">
         <p>
-          <b>Cliente</b>: {client || BLANK}
+          <b>{t.clientLabel}</b>: {client || blank}
         </p>
         <p>
-          <b>Proyecto</b>: {p.projectName || BLANK}
+          <b>{t.projectLabel}</b>: {p.projectName || blank}
         </p>
         {p.projectDescription && <p className="q-project-desc">{p.projectDescription}</p>}
         <p>
-          <b>Fecha</b>: {p.date}
+          <b>{t.dateLabel}</b>: {p.date}
         </p>
       </section>
 
       <section
         className="q-table"
         style={{
-          // encabezado, conceptos, 2 filas vacías, Subtotal, ITBMS, TOTAL
-          gridTemplateRows: `auto repeat(${rows.length}, auto) 25.4pt 25.6pt 25.6pt 25.7pt 28.9pt`,
+          gridTemplateColumns: colTemplate,
+          // encabezado, conceptos, filas vacías, Subtotal, (ITBMS), TOTAL
+          gridTemplateRows: [
+            "auto",
+            `repeat(${rows.length}, auto)`,
+            empty ? `repeat(${empty}, 25.5pt)` : "",
+            "minmax(25.6pt, auto)",
+            d.show.taxRow ? "minmax(25.7pt, auto)" : "",
+            "minmax(28.9pt, auto)",
+          ]
+            .filter(Boolean)
+            .join(" "),
         }}
       >
-        <div className="q-th k1">Descripción</div>
-        <div className="q-th k2">Cantidad</div>
-        <div className="q-th k3">Precio unit.</div>
-        <div className="q-th k4">Costo</div>
+        {cols.map((c, i) => (
+          <Fragment key={c.key}>{cell(i, "q-th", c.label)}</Fragment>
+        ))}
 
-        {rows.map((item, i) => {
+        {rows.map((item, r) => {
           const qty = num(item.quantity);
-          const empty = !items.length;
-          const isLast = i === rows.length - 1;
+          const isEmpty = !items.length;
+          const isLast = r === rows.length - 1;
           return (
-            <Fragment key={i}>
-              {/* La descripción del último concepto baja también por las dos filas vacías,
-                  igual que en la plantilla original. */}
-              <div
-                className={`q-desc k1 ${isLast ? "q-desc--last" : "q-sep"}`}
-                style={isLast ? { gridRow: "span 3" } : undefined}
-              >
-                <Description text={item.description} />
-              </div>
-              <div className="q-num k2 q-sep">{empty ? "" : qty}</div>
-              <div className="q-num k3 q-sep">{empty || qty === 1 ? "" : money(item.unit_price)}</div>
-              <div className="q-num k4 q-sep">{empty ? "" : money(qty * num(item.unit_price))}</div>
+            <Fragment key={r}>
+              {cols.map((c, i) => {
+                if (c.key === "desc") {
+                  // La descripción del último concepto baja también por las filas vacías
+                  return (
+                    <Fragment key={c.key}>
+                      {cell(
+                        i,
+                        `q-desc ${isLast ? "q-desc--last" : "q-sep"}`,
+                        <Description text={item.description} />,
+                        isLast && empty ? { gridRow: `span ${1 + empty}` } : undefined
+                      )}
+                    </Fragment>
+                  );
+                }
+                const value = isEmpty
+                  ? ""
+                  : c.key === "qty"
+                    ? String(qty)
+                    : c.key === "unit"
+                      ? qty === 1
+                        ? ""
+                        : money(item.unit_price)
+                      : money(qty * num(item.unit_price));
+                return (
+                  <Fragment key={c.key}>
+                    {cell(i, `q-num ${isLast && !empty ? "" : "q-sep"}`, value)}
+                  </Fragment>
+                );
+              })}
             </Fragment>
           );
         })}
 
-        <div className="k2 q-sep" />
-        <div className="k3 q-sep" />
-        <div className="k4 q-sep" />
-        <div className="k2" />
-        <div className="k3" />
-        <div className="k4" />
+        {Array.from({ length: empty }).map((_, r) =>
+          cols.slice(1).map((c, j) => (
+            <Fragment key={`e${r}${c.key}`}>{cell(j + 1, r < empty - 1 ? "q-sep" : "")}</Fragment>
+          ))
+        )}
 
-        <div className="q-tot k1 q-solid q-sep" />
-        <div className="q-tot k2 q-solid q-sep" />
-        <div className="q-tot k3 q-solid q-sep q-tl">Subtotal</div>
-        <div className="q-tot k4 q-solid q-sep q-tv">{money(p.subtotal)}</div>
-
-        <div className="q-tot k1" />
-        <div className="q-tot k2" />
-        <div className="q-tot k3 q-tl">{num(p.taxAmount) !== 0 ? "ITBMS" : ""}</div>
-        <div className="q-tot k4 q-tv">{money(p.taxAmount)}</div>
-
-        <div className="q-tot q-total k1 q-solid q-solid-b" />
-        <div className="q-tot q-total k2 q-solid q-solid-b" />
-        <div className="q-tot q-total k3 q-solid q-solid-b q-tl">TOTAL</div>
-        <div className="q-tot q-total k4 q-solid q-solid-b q-tv">{money(p.total)}</div>
+        {totalsRow(t.subtotal, money(p.subtotal), "q-solid q-sep")}
+        {d.show.taxRow && totalsRow(num(p.taxAmount) !== 0 ? t.tax : "", money(p.taxAmount), "")}
+        {totalsRow(t.total, money(p.total), "q-total q-solid q-solid-b")}
       </section>
 
       <section className="q-details">
-        <p className="q-details-title">Detalles de la cotización:</p>
+        <p className="q-details-title">{t.quoteDetails}</p>
         {p.notes && <p className="q-notes">{p.notes}</p>}
       </section>
     </>
