@@ -429,35 +429,6 @@ export default function SettingsClient({ initial }: { initial: CompanySettings |
         </div>
       </section>
 
-      <section className="card p-5 sm:p-6 space-y-4">
-        <h2 className="font-display font-semibold text-ink text-sm uppercase tracking-wide">
-          Seguimiento
-        </h2>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          <label className="text-sm text-ink leading-relaxed" htmlFor="followupDays">
-            Avísame de una cotización sin respuesta después de
-          </label>
-          <div className="flex items-center gap-2 shrink-0">
-            <input
-              id="followupDays"
-              type="number"
-              min={1}
-              max={180}
-              step={1}
-              inputMode="numeric"
-              className="field-input w-20 text-right tabular-nums"
-              value={followupDays}
-              onChange={(e) => setFollowupDays(num(e.target.value))}
-            />
-            <span className="text-sm text-ink">días</span>
-          </div>
-        </div>
-        <p className="text-sm text-slate">
-          Aparecerá en la pestaña <span className="font-medium text-ink">Seguimiento</span> con un
-          mensaje de recordatorio listo para copiar. Por defecto son 7.
-        </p>
-      </section>
-
       <div aria-live="polite" className="min-h-5">
         {error && <p role="alert" className="text-sm text-brick">{error}</p>}
         {success && (
