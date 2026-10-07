@@ -1,13 +1,15 @@
 import { Fragment } from "react";
 import { LineItem, CompanySettings } from "@/types";
 import { formatMoney, num } from "@/lib/format";
+import DocFit from "@/components/DocFit";
 
 /**
- * Plantilla de impresion de cotizaciones y facturas.
+ * Plantilla de impresion de cotizaciones y facturas (diseño dmc).
  *
- * Replica 1:1 los documentos de referencia (hoja carta, 612 x 792 pt):
- * todas las medidas de `globals.css` (bloque `.doc`) estan en puntos y salen
- * de las coordenadas exactas de los PDF originales.
+ * Todo el documento fluye con el contenido: no hay posiciones fijas, asi que
+ * textos largos (nombre, proyecto, dirección, conceptos, forma de pago)
+ * empujan lo de abajo en vez de encimarse o cortarse. Las medidas de
+ * `globals.css` (bloque `.doc`) salen de los PDF de referencia.
  */
 type Props = {
   docLabel: "COTIZACIÓN" | "FACTURA";
@@ -44,43 +46,41 @@ export default function DocumentTemplate(props: Props) {
   const currency = company?.currency ?? "USD";
   const locale = company?.locale ?? "es-PA";
   const money = (v: unknown) => docMoney(v, currency, locale);
+  const isInvoice = props.docLabel === "FACTURA";
 
   return (
-    <div className="doc-scroll">
+    <DocFit>
       <article
-        className={`doc print-sheet ${props.docLabel === "FACTURA" ? "doc--invoice" : "doc--quote"}`}
+        className={`doc ${isInvoice ? "doc--invoice" : "doc--quote"}`}
         aria-label={`${props.docLabel} ${props.number}`}
       >
         <div className="doc-rule" />
 
-        {props.docLabel === "FACTURA" ? (
-          <InvoiceBody {...props} money={money} />
-        ) : (
-          <QuoteBody {...props} money={money} />
-        )}
+        {isInvoice ? <InvoiceBody {...props} money={money} /> : <QuoteBody {...props} money={money} />}
 
         <footer className="doc-footer">
           <div className="doc-rule" />
-          {company?.company_address && (
-            <p className="doc-address">{company.company_address}</p>
-          )}
+          <p className="doc-address">{company?.company_address || ""}</p>
         </footer>
       </article>
-    </div>
+    </DocFit>
   );
 }
 
 type BodyProps = Props & { money: (v: unknown) => string };
 
 /* ------------------------------------------------------------------ */
-/* Encabezado: datos del emisor                                        */
+/* Encabezado                                                          */
 /* ------------------------------------------------------------------ */
 
 function Logo({ company }: { company?: CompanySettings | null }) {
-  if (!company?.logo_url) return null;
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img className="doc-logo" src={company.logo_url} alt={company.company_name ?? "Logo"} />
+    <div className="doc-logo">
+      {company?.logo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={company.logo_url} alt={company.company_name ?? "Logo"} />
+      )}
+    </div>
   );
 }
 
@@ -93,31 +93,23 @@ function IssuerInfo({
 }) {
   return (
     <>
-      {company?.company_name && (
-        <p className="doc-issuer-name">{company.company_name.toUpperCase()}</p>
-      )}
+      <p className="doc-issuer-name">{(company?.company_name ?? "").toUpperCase()}</p>
       <div className="doc-issuer-info">
-        {company?.tax_id && <p>RUC: {company.tax_id}</p>}
-        {company?.company_phone && <p>Teléfono: {company.company_phone}</p>}
-        {company?.company_email && (
-          <p>
-            E-Mail:{" "}
-            <span className={underlineEmail ? "doc-underline" : undefined}>
-              {company.company_email}
-            </span>
-          </p>
-        )}
+        <p>RUC: {company?.tax_id || BLANK}</p>
+        <p>Teléfono: {company?.company_phone || BLANK}</p>
+        <p>
+          E-Mail:{" "}
+          <span className={underlineEmail ? "doc-underline" : undefined}>
+            {company?.company_email || BLANK}
+          </span>
+        </p>
       </div>
     </>
   );
 }
 
 function NumberBox({ number }: { number: string }) {
-  return (
-    <div className="doc-numbox">
-      <span>{displayNumber(number)}</span>
-    </div>
-  );
+  return <div className="doc-numbox">{displayNumber(number)}</div>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -127,76 +119,71 @@ function NumberBox({ number }: { number: string }) {
 function InvoiceBody(p: BodyProps) {
   const { money } = p;
   const items = p.items ?? [];
-  const extraRows = (p.projectName ? 1 : 0) + (p.projectDescription ? 1 : 0);
   const [payTitle, ...payLines] = splitLines(p.paymentMethod);
 
   return (
     <>
-      <div className="doc-head doc-head--invoice">
+      <header className="doc-head">
         <Logo company={p.company} />
-        <NumberBox number={p.number} />
-        <div className="doc-issuer">
+        <div className="doc-head-right">
+          <NumberBox number={p.number} />
           <IssuerInfo company={p.company} />
         </div>
-      </div>
+      </header>
 
-      <div className="doc-client doc-client--invoice">
-        <div>
-          <p>
-            <b>Cliente</b>: {p.clientName || BLANK}
-          </p>
-          <p>
-            <b>Dirección:</b> {p.clientAddress || BLANK}
-          </p>
+      <section className="inv-client">
+        <p>
+          <b>Cliente</b>: {p.clientName || BLANK}
+        </p>
+        <p>
+          <b>RUC</b>: {p.clientTaxId || BLANK}
+        </p>
+        <p>
+          <b>Dirección:</b> {p.clientAddress || BLANK}
+        </p>
+        <p>
+          <b>Fecha</b>: {p.date}
+        </p>
+      </section>
+
+      <section className="inv-table">
+        <div className="inv-row inv-row--head">
+          <div className="inv-c1">DETALLE</div>
+          <div className="inv-c2">TOTAL</div>
         </div>
-        <div>
-          <p>
-            <b>RUC</b>: {p.clientTaxId || BLANK}
-          </p>
-          <p>
-            <b>Fecha</b>: {p.date}
-          </p>
-        </div>
-      </div>
 
-      <div className="inv-table">
-        <div className="inv-th">DETALLE</div>
-        <div className="inv-th">TOTAL</div>
-
-        <div
-          className="inv-body"
-          style={{ gridTemplateRows: `repeat(${items.length + extraRows}, auto) 1fr` }}
-        >
+        <div className="inv-bodyrows">
           {items.map((item, i) => (
-            <Fragment key={i}>
-              <div className="inv-desc">
+            <div className="inv-row" key={i}>
+              <div className="inv-c1 inv-desc">
                 <Description text={item.description} />
               </div>
-              <div className="inv-amount">
+              <div className="inv-c2 inv-amount">
                 {money(num(item.quantity) * num(item.unit_price))}
               </div>
-            </Fragment>
+            </div>
           ))}
-          {p.projectName && (
-            <>
-              <div className="inv-project">{p.projectName}</div>
-              <div className="inv-amount" />
-            </>
-          )}
-          {p.projectDescription && (
-            <>
-              <div className="inv-project-desc">
-                <Description text={p.projectDescription} />
+          {(p.projectName || p.projectDescription) && (
+            <div className="inv-row">
+              <div className="inv-c1 inv-project">
+                {p.projectName && <p className="inv-project-name">{p.projectName}</p>}
+                {p.projectDescription && (
+                  <div className="inv-project-desc">
+                    <Description text={p.projectDescription} />
+                  </div>
+                )}
               </div>
-              <div className="inv-amount" />
-            </>
+              <div className="inv-c2" />
+            </div>
           )}
-          <div className="inv-desc inv-filler" />
-          <div className="inv-amount inv-filler" />
+          <div className="inv-row inv-row--fill">
+            <div className="inv-c1" />
+            <div className="inv-c2" />
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="inv-bottom">
+      <section className="inv-bottom">
         <div className="inv-pay">
           <p className="inv-pay-title">Forma de pago:</p>
           {payTitle && <p className="inv-pay-method">{payTitle}</p>}
@@ -209,14 +196,20 @@ function InvoiceBody(p: BodyProps) {
         </div>
 
         <div className="inv-totals">
-          <div className="inv-tl">Subtotal</div>
-          <div className="inv-tv">{money(p.subtotal)}</div>
-          <div className="inv-tl">ITBMS</div>
-          <div className="inv-tv">{money(p.taxAmount)}</div>
-          <div className="inv-tl inv-total">TOTAL</div>
-          <div className="inv-tv inv-total">{money(p.total)}</div>
+          <div className="inv-trow">
+            <div className="inv-tl">Subtotal</div>
+            <div className="inv-tv">{money(p.subtotal)}</div>
+          </div>
+          <div className="inv-trow">
+            <div className="inv-tl">ITBMS</div>
+            <div className="inv-tv">{money(p.taxAmount)}</div>
+          </div>
+          <div className="inv-trow inv-trow--total">
+            <div className="inv-tl">TOTAL</div>
+            <div className="inv-tv">{money(p.total)}</div>
+          </div>
         </div>
-      </div>
+      </section>
     </>
   );
 }
@@ -229,39 +222,39 @@ function QuoteBody(p: BodyProps) {
   const { money } = p;
   const items = p.items ?? [];
   const client = joinClient(p.clientCompany, p.clientName);
-  const last = items.length - 1;
+  const rows = items.length ? items : [{ description: "", quantity: 0, unit_price: 0 }];
 
   return (
     <>
-      <div className="doc-head doc-head--quote">
+      <header className="doc-head">
         <Logo company={p.company} />
-        <p className="doc-title">COTIZACIÓN</p>
-        <NumberBox number={p.number} />
-        <div className="doc-issuer">
+        <div className="doc-head-right">
+          <div className="doc-titlerow">
+            <p className="doc-title">COTIZACIÓN</p>
+            <NumberBox number={p.number} />
+          </div>
           <IssuerInfo company={p.company} underlineEmail />
         </div>
-      </div>
+      </header>
 
-      <div className="doc-client doc-client--quote">
+      <section className="q-client">
         <p>
           <b>Cliente</b>: {client || BLANK}
         </p>
-        {p.projectName && (
-          <p>
-            <b>Proyecto</b>: {p.projectName}
-          </p>
-        )}
-        {p.projectDescription && <p className="doc-project-desc">{p.projectDescription}</p>}
+        <p>
+          <b>Proyecto</b>: {p.projectName || BLANK}
+        </p>
+        {p.projectDescription && <p className="q-project-desc">{p.projectDescription}</p>}
         <p>
           <b>Fecha</b>: {p.date}
         </p>
-      </div>
+      </section>
 
-      <div
+      <section
         className="q-table"
         style={{
-          // Filas: encabezado, conceptos, 2 filas vacías, Subtotal, ITBMS, TOTAL
-          gridTemplateRows: `21.9pt repeat(${Math.max(items.length, 1)}, auto) 25.4pt 25.6pt 25.6pt 25.7pt 28.9pt`,
+          // encabezado, conceptos, 2 filas vacías, Subtotal, ITBMS, TOTAL
+          gridTemplateRows: `auto repeat(${rows.length}, auto) 25.4pt 25.6pt 25.6pt 25.7pt 28.9pt`,
         }}
       >
         <div className="q-th k1">Descripción</div>
@@ -269,41 +262,33 @@ function QuoteBody(p: BodyProps) {
         <div className="q-th k3">Precio unit.</div>
         <div className="q-th k4">Costo</div>
 
-        {items.map((item, i) => {
-          const isLast = i === last;
+        {rows.map((item, i) => {
           const qty = num(item.quantity);
+          const empty = !items.length;
+          const isLast = i === rows.length - 1;
           return (
             <Fragment key={i}>
-              {/* La descripción del último concepto ocupa también las dos filas vacías */}
+              {/* La descripción del último concepto baja también por las dos filas vacías,
+                  igual que en la plantilla original. */}
               <div
                 className={`q-desc k1 ${isLast ? "q-desc--last" : "q-sep"}`}
                 style={isLast ? { gridRow: "span 3" } : undefined}
               >
                 <Description text={item.description} />
               </div>
-              <div className="q-num k2 q-sep">{qty}</div>
-              <div className="q-num k3 q-sep">{qty !== 1 ? money(item.unit_price) : ""}</div>
-              <div className="q-num k4 q-sep">{money(qty * num(item.unit_price))}</div>
+              <div className="q-num k2 q-sep">{empty ? "" : qty}</div>
+              <div className="q-num k3 q-sep">{empty || qty === 1 ? "" : money(item.unit_price)}</div>
+              <div className="q-num k4 q-sep">{empty ? "" : money(qty * num(item.unit_price))}</div>
             </Fragment>
           );
         })}
 
-        {items.length === 0 && (
-          <>
-            <div className="q-desc q-desc--last k1" style={{ gridRow: "span 3" }} />
-            <div className="q-num k2 q-sep" />
-            <div className="q-num k3 q-sep" />
-            <div className="q-num k4 q-sep" />
-          </>
-        )}
-
-        {/* Dos filas vacías bajo los conceptos, como en la plantilla original */}
-        <div className="q-filler k2 q-sep" />
-        <div className="q-filler k3 q-sep" />
-        <div className="q-filler k4 q-sep" />
-        <div className="q-filler k2" />
-        <div className="q-filler k3" />
-        <div className="q-filler k4" />
+        <div className="k2 q-sep" />
+        <div className="k3 q-sep" />
+        <div className="k4 q-sep" />
+        <div className="k2" />
+        <div className="k3" />
+        <div className="k4" />
 
         <div className="q-tot k1 q-solid q-sep" />
         <div className="q-tot k2 q-solid q-sep" />
@@ -315,16 +300,16 @@ function QuoteBody(p: BodyProps) {
         <div className="q-tot k3 q-tl">{num(p.taxAmount) !== 0 ? "ITBMS" : ""}</div>
         <div className="q-tot k4 q-tv">{money(p.taxAmount)}</div>
 
-        <div className="q-tot q-tot--big k1 q-solid q-solid-b" />
-        <div className="q-tot q-tot--big k2 q-solid q-solid-b" />
-        <div className="q-tot q-tot--big k3 q-solid q-solid-b q-tl q-total">TOTAL</div>
-        <div className="q-tot q-tot--big k4 q-solid q-solid-b q-tv q-total">{money(p.total)}</div>
-      </div>
+        <div className="q-tot q-total k1 q-solid q-solid-b" />
+        <div className="q-tot q-total k2 q-solid q-solid-b" />
+        <div className="q-tot q-total k3 q-solid q-solid-b q-tl">TOTAL</div>
+        <div className="q-tot q-total k4 q-solid q-solid-b q-tv">{money(p.total)}</div>
+      </section>
 
-      <div className="q-details">
+      <section className="q-details">
         <p className="q-details-title">Detalles de la cotización:</p>
         {p.notes && <p className="q-notes">{p.notes}</p>}
-      </div>
+      </section>
     </>
   );
 }

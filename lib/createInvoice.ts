@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Quote, CompanySettings } from "@/types";
+import { lastPaymentMethod } from "@/lib/documentNumber";
 
 export type CreateInvoiceResult =
   | { ok: true; id: string; number: string }
@@ -29,6 +30,8 @@ export async function createInvoiceFromQuote(
   if (!invoiceNumber) {
     return { ok: false, message: "Escribe el número de factura." };
   }
+
+  const paymentMethod = await lastPaymentMethod(supabase);
 
   const termDays = company?.payment_terms_days ?? 15;
   const due = new Date();
@@ -66,6 +69,7 @@ export async function createInvoiceFromQuote(
       project_name: quote.project_name,
       project_description: quote.project_description,
       due_date: due.toISOString().slice(0, 10),
+      payment_method: paymentMethod,
       status: "pendiente",
       requires_dgi: requiresDgi,
       // Los retainers se facturan cada mes desde la misma cotizacion:

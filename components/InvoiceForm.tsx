@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { LineItem, Invoice, CompanySettings, Client } from "@/types";
 import { computeTotals, formatMoney, num } from "@/lib/format";
-import { lastUsedNumber } from "@/lib/documentNumber";
+import { lastUsedNumber, lastPaymentMethod } from "@/lib/documentNumber";
 
 const blankItem: LineItem = { description: "", quantity: 1, unit_price: 0 };
 function selectOnFocus(e: React.FocusEvent<HTMLInputElement>) {
@@ -34,6 +34,10 @@ export default function InvoiceForm({ mode, invoice, settings, clients }: Props)
   useEffect(() => {
     if (mode !== "create") return;
     lastUsedNumber(supabase, "invoice").then(setLastNumber);
+    // La forma de pago casi nunca cambia: se precarga la de la última factura.
+    lastPaymentMethod(supabase).then((pm) => {
+      if (pm) setPaymentMethod((current) => current || pm);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 

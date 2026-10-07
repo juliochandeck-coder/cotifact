@@ -60,3 +60,16 @@ export async function askDocumentNumber(
 }
 
 export const DUPLICATE_NUMBER_CODE = "23505";
+
+/** Forma de pago de la factura más reciente que tenga una (para no reescribirla cada vez). */
+export async function lastPaymentMethod(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase
+    .from("invoices")
+    .select("payment_method")
+    .not("payment_method", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const pm = (data as { payment_method?: string | null } | null)?.payment_method ?? null;
+  return pm && pm.trim() ? pm : null;
+}

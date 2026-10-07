@@ -6,10 +6,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
-  { href: "/summary", label: "Resumen", short: "Resum." },
   { href: "/dashboard", label: "Cotizaciones", short: "Cotiz." },
   { href: "/invoices", label: "Facturas", short: "Fact." },
-  { href: "/followup", label: "Seguimiento", short: "Segui." },
   { href: "/directory", label: "Directorio", short: "Dir." },
   { href: "/settings", label: "Ajustes", short: "Ajust." },
 ];
@@ -39,7 +37,7 @@ export default function Navbar() {
     <header className="no-print border-b border-line bg-paper sticky top-0 z-10">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <Link
-          href="/summary"
+          href="/dashboard"
           className="font-title font-bold text-ink text-lg tracking-tight shrink-0"
         >
           CotiFact
