@@ -9,6 +9,7 @@ import StatusControl from "@/components/StatusControl";
 import SendButton from "@/components/SendButton";
 import { InvoiceStatusBadge } from "@/components/StatusBadge";
 import { usePrintDocument } from "@/lib/usePrintDocument";
+import { askDocumentNumber } from "@/lib/documentNumber";
 import { formatDate, formatDateDMY, formatMoney, num, documentFilename } from "@/lib/format";
 import {
   Invoice,
@@ -44,6 +45,8 @@ export default function InvoiceDetailClient({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const locale = company?.locale ?? "es-PA";
   const currency = company?.currency ?? "USD";
@@ -55,6 +58,79 @@ export default function InvoiceDetailClient({
     ? Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000)
     : 0;
   const isOverdue = status !== "pagada" && dueDate !== null && daysLate > 0;
+
+  /**
+   * Crea una factura nueva con los mismos datos (cliente, conceptos, proyecto,
+   * forma de pago) y abre el formulario para ajustar los detalles. Pide el
+   * número porque la numeración es manual. Queda pendiente, sin enviar ni pagar.
+   */
+  async function handleDuplicate() {
+    if (duplicating) return;
+    setDuplicateError(null);
+
+    const invoiceNumber = await askDocumentNumber(
+      supabase,
+      "invoice",
+      `Duplicar la factura ${invoice.invoice_number}`
+    );
+    if (!invoiceNumber) return;
+    setDuplicating(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setDuplicateError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      setDuplicating(false);
+      return;
+    }
+
+    const due = new Date();
+    due.setDate(due.getDate() + (company?.payment_terms_days ?? 15));
+
+    const { data, error } = await supabase
+      .from("invoices")
+      .insert({
+        user_id: user.id,
+        invoice_number: invoiceNumber,
+        // Las facturas de retainer pueden repetirse para la misma cotización;
+        // las demás no (una factura por cotización), así que la copia queda suelta.
+        quote_id: invoice.is_retainer_invoice ? invoice.quote_id : null,
+        is_retainer_invoice: invoice.is_retainer_invoice,
+        client_id: invoice.client_id,
+        client_name: invoice.client_name,
+        client_company: invoice.client_company,
+        client_email: invoice.client_email,
+        client_phone: invoice.client_phone,
+        project_name: invoice.project_name,
+        project_description: invoice.project_description,
+        items: invoice.items,
+        subtotal: invoice.subtotal,
+        tax_rate: invoice.tax_rate,
+        tax_amount: invoice.tax_amount,
+        total: invoice.total,
+        notes: invoice.notes,
+        payment_method: invoice.payment_method,
+        requires_dgi: invoice.requires_dgi,
+        due_date: due.toISOString().slice(0, 10),
+        status: "pendiente",
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      setDuplicateError(
+        error?.code === "23505"
+          ? `Ya tienes otra factura con el número ${invoiceNumber}. Usa uno distinto.`
+          : "No se pudo duplicar. " + (error?.message ?? "")
+      );
+      setDuplicating(false);
+      return;
+    }
+
+    router.push(`/invoices/${data.id}/edit`);
+    router.refresh();
+  }
 
   async function handleDelete() {
     if (deleting) return;
@@ -90,6 +166,9 @@ export default function InvoiceDetailClient({
             <Link href={`/invoices/${invoice.id}/edit`} className="btn-secondary">
               Editar
             </Link>
+            <button onClick={handleDuplicate} disabled={duplicating} className="btn-secondary">
+              {duplicating ? "Duplicando…" : "Duplicar"}
+            </button>
             <SendButton
               kind="invoice"
               id={invoice.id}
@@ -102,6 +181,11 @@ export default function InvoiceDetailClient({
             </button>
           </div>
         </div>
+        {duplicateError && (
+          <p role="alert" className="text-sm text-brick mt-2">
+            {duplicateError}
+          </p>
+        )}
       </div>
 
       {isOverdue && (
